@@ -34,4 +34,4 @@ npm run build
 
 Set `MINI_APP_URL` for the Telegram bot and `VITE_API_BASE_URL` for the frontend API origin.
 
-No production deployment is implied by this repository phase.
+Production deployments must be verified against the deployed commit and healthcheck before the release is considered complete.
