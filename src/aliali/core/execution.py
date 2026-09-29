@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from .errors import ErrorCode, SecurityError
 from .security import AuthorizationContext, AuthorizationLevel
@@ -43,7 +44,7 @@ async def execute(
     try:
         data = await asyncio.wait_for(operation(), timeout=policy.timeout_seconds)
         return ExecutionResult(ok=True, module_key=module_key, data=data)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return ExecutionResult(
             ok=False,
             module_key=module_key,
