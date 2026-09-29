@@ -76,6 +76,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         init_data = x_telegram_init_data or request.init_data
         _authenticate(init_data, resolved_settings)
 
+        registry = _registry()
         modules = [
             {
                 "key": module.key,
@@ -84,9 +85,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "category": module.category,
                 "enabled": module.enabled,
             }
-            for module in _registry().all()
+            for module in registry.all()
             if module.enabled
         ]
+        categories = sorted({module.category for module in modules})
         return {
             "status": "operational",
             "data_source": "module_registry",
@@ -94,6 +96,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "assets": None,
                 "changes": None,
                 "evidence": None,
+            },
+            "module_summary": {
+                "total_enabled": len(modules),
+                "categories": categories,
             },
             "modules": modules,
         }
