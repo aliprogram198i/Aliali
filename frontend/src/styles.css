@@ -29,3 +29,31 @@ p { margin: 0; color: #9cafcf; line-height: 1.6; }
 .arrow { color: #6e82a4; font-size: 24px; transform: rotate(180deg); }
 footer { padding: 24px 2px 0; text-align: center; color: #667b9e; font-size: 11px; }
 @media (min-width: 620px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .card.primary { grid-column: 1 / -1; } }
+
+.module-feature { border-color: #2b4f7d; background: linear-gradient(135deg, rgba(16, 39, 67, .96), rgba(12, 23, 40, .92)); }
+.workspace { margin-top: 18px; padding: 16px; border: 1px solid #27466e; border-radius: 20px; background: rgba(8, 18, 32, .96); }
+.workspace-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.workspace-head h2 { margin-top: 5px; }
+.workspace-head p { font-size: 12px; margin-top: 4px; }
+.close-button { border: 1px solid #30415e; background: #111f35; border-radius: 10px; padding: 8px 11px; cursor: pointer; }
+.network-tools { display: grid; gap: 8px; margin-top: 16px; }
+.tool-button { border: 1px solid #203652; background: #0e1d32; border-radius: 12px; padding: 11px; text-align: right; cursor: pointer; }
+.tool-button.selected { border-color: #527eaf; background: #142d4c; }
+.tool-panel { margin-top: 12px; padding: 14px; border: 1px solid #1c2b45; border-radius: 16px; background: #0c182a; }
+.tool-panel > p { margin-top: 4px; font-size: 12px; }
+.field-grid { display: grid; gap: 10px; margin-top: 14px; }
+.field-grid label { display: grid; gap: 6px; font-size: 12px; color: #b6c7e1; }
+.field-grid label span { color: #7286a6; font-size: 10px; }
+.field-grid input { width: 100%; border: 1px solid #2a3d5a; border-radius: 10px; background: #07111f; color: #eef4ff; padding: 11px 12px; outline: none; }
+.field-grid input:focus { border-color: #5a82b0; }
+.action-list { display: grid; gap: 8px; margin-top: 12px; }
+.action-list button { border: 1px solid #31547e; background: #122844; border-radius: 11px; padding: 11px 12px; cursor: pointer; text-align: right; }
+.action-list button:disabled { opacity: .5; cursor: not-allowed; }
+.result-card { margin-top: 12px; padding: 12px; border: 1px solid #28523f; border-radius: 12px; background: #0d2119; }
+.result-card p { margin: 5px 0; color: #b9d9c7; font-size: 12px; }
+.result-card small { display: block; color: #8fb39f; margin-top: 4px; }
+@media (min-width: 620px) {
+  .network-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field-grid label:last-child { grid-column: 1 / -1; }
+}
