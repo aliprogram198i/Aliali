@@ -1,24 +1,26 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 
-def home_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
+def home_keyboard(mini_app_url: str | None = None) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton("🚀 فتح Aliali Mini App", web_app=WebAppInfo(mini_app_url))]
+        if mini_app_url
+        else [],
+        [InlineKeyboardButton("🔎 Quick Scan", callback_data="menu:scan")],
         [
-            [InlineKeyboardButton("🔎 Quick Scan", callback_data="menu:scan")],
-            [
-                InlineKeyboardButton("🔵 Facebook Ops", callback_data="menu:facebook"),
-                InlineKeyboardButton("🌐 Network Security", callback_data="menu:network"),
-            ],
-            [
-                InlineKeyboardButton("📱 Identity Intelligence", callback_data="menu:identity"),
-                InlineKeyboardButton("🚨 Cases", callback_data="menu:cases"),
-            ],
-            [
-                InlineKeyboardButton("📊 Reports", callback_data="menu:reports"),
-                InlineKeyboardButton("⚙️ Settings", callback_data="menu:settings"),
-            ],
-        ]
-    )
+            InlineKeyboardButton("🔵 Facebook Ops", callback_data="menu:facebook"),
+            InlineKeyboardButton("🌐 Network Security", callback_data="menu:network"),
+        ],
+        [
+            InlineKeyboardButton("📱 Identity Intelligence", callback_data="menu:identity"),
+            InlineKeyboardButton("🚨 Cases", callback_data="menu:cases"),
+        ],
+        [
+            InlineKeyboardButton("📊 Reports", callback_data="menu:reports"),
+            InlineKeyboardButton("⚙️ Settings", callback_data="menu:settings"),
+        ],
+    ]
+    return InlineKeyboardMarkup([row for row in rows if row])
 
 
 def home_text() -> str:
