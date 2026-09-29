@@ -6,14 +6,14 @@ Telegram Mini App + FastAPI service for a simple, authenticated network lookup.
 
 When the Mini App opens, the user sees one field:
 
-- **IP address** — looks up the public network/organization, ISP, ASN, domain and approximate location.
-- **MAC address** — looks up the registered hardware vendor.
+- IP address — looks up the public network or organization, ISP, ASN, domain and approximate location.
+- MAC address — looks up the registered hardware vendor.
 
 The backend performs the lookup on the server after validating Telegram Mini App initData.
 
-Private IP ranges such as 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16 are not treated as public Internet addresses, so the app does not invent a network identity for them. citeturn0search1turn0search2
+Private IP addresses are not treated as public Internet addresses, so the app does not invent a network identity for them.
 
-MAC lookup identifies the registered hardware vendor/OUI; a MAC address does not provide a public Internet network name. The implementation uses MACVendors' public lookup API for vendor identification. citeturn1search0turn1search5
+MAC lookup identifies the registered hardware vendor/OUI. A MAC address does not provide a public Internet network name.
 
 ## Runtime
 
