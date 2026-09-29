@@ -10,6 +10,10 @@ Cyber Security Operations Platform — modular, extensible, authorization-first 
 
 The Mini App is a presentation layer. Security-sensitive authorization, orchestration, evidence and execution remain server-side.
 
+## Network Management
+
+The Mini App groups enabled network modules under **إدارة الشبكات**. Authorized operators can submit an IP or MAC target for server-side validation; IP targets can also use reverse DNS and TCP connectivity checks. These operations require authenticated Telegram Mini App session data and execute from the API service's network context.
+
 ## Development
 
 ### Backend
