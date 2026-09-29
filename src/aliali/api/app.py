@@ -4,11 +4,31 @@ from pydantic import BaseModel
 
 from ..config import Settings
 from ..core.errors import SecurityError
+from ..core.registry import ModuleRegistry
+from ..modules.facebook import FACEBOOK_MODULES
+from ..modules.network import NETWORK_MODULES
 from .auth import validate_telegram_init_data
 
 
 class SessionRequest(BaseModel):
     init_data: str
+
+
+def _registry() -> ModuleRegistry:
+    registry = ModuleRegistry()
+    for module in [*FACEBOOK_MODULES, *NETWORK_MODULES]:
+        registry.register(module)
+    return registry
+
+
+def _authenticate(
+    init_data: str,
+    settings: Settings,
+) -> dict[str, object]:
+    try:
+        return validate_telegram_init_data(init_data, settings.bot_token)
+    except SecurityError as exc:
+        raise HTTPException(status_code=401, detail=exc.message) from exc
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -35,11 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         x_telegram_init_data: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        try:
-            identity = validate_telegram_init_data(init_data, resolved_settings.bot_token)
-        except SecurityError as exc:
-            raise HTTPException(status_code=401, detail=exc.message) from exc
-
+        identity = _authenticate(init_data, resolved_settings)
         return {
             "authenticated": True,
             "user": identity["user"],
@@ -50,6 +66,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "cases": False,
                 "reports": False,
             },
+        }
+
+    @app.post("/api/v1/dashboard")
+    async def dashboard(
+        request: SessionRequest,
+        x_telegram_init_data: str | None = Header(default=None),
+    ) -> dict[str, object]:
+        init_data = x_telegram_init_data or request.init_data
+        _authenticate(init_data, resolved_settings)
+
+        modules = [
+            {
+                "key": module.key,
+                "title": module.title,
+                "description": module.description,
+                "category": module.category,
+                "enabled": module.enabled,
+            }
+            for module in _registry().all()
+            if module.enabled
+        ]
+        return {
+            "status": "operational",
+            "data_source": "module_registry",
+            "metrics": {
+                "assets": None,
+                "changes": None,
+                "evidence": None,
+            },
+            "modules": modules,
         }
 
     return app
