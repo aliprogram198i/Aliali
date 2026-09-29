@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -41,7 +41,7 @@ class NetworkGeolocation:
     asn: str | None = None
     source: str | None = None
     confidence: Confidence = Confidence.LOW
-    observed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    observed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def is_estimate(self) -> bool:
@@ -53,7 +53,7 @@ class AssetChange:
     field: str
     previous_value: str | None
     current_value: str | None
-    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
