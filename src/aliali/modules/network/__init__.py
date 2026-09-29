@@ -1,6 +1,4 @@
 from aliali.core.models import ModuleInfo
-
-
 NETWORK_MODULES = [
     ModuleInfo(
         "network.asset_discovery",
