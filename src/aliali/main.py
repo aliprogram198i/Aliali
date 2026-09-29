@@ -26,9 +26,10 @@ for module in [*FACEBOOK_MODULES, *NETWORK_MODULES]:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
+        mini_app_url = context.application.bot_data.get("mini_app_url")
         await update.message.reply_text(
             home_text(),
-            reply_markup=home_keyboard(),
+            reply_markup=home_keyboard(mini_app_url),
             parse_mode="Markdown",
         )
 
@@ -40,6 +41,7 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await query.answer()
     action, _, value = query.data.partition(":")
+    mini_app_url = context.application.bot_data.get("mini_app_url")
 
     if action == "menu" and value == "network":
         await query.edit_message_text(network_text(), reply_markup=network_keyboard())
@@ -56,7 +58,10 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if action == "network":
         if value == "dashboard":
-            await query.edit_message_text(network_dashboard_text(), reply_markup=network_keyboard())
+            await query.edit_message_text(
+                network_dashboard_text(),
+                reply_markup=network_keyboard(),
+            )
             return
         if value in {
             "discover",
@@ -71,7 +76,10 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "changes",
             "evidence",
         }:
-            await query.edit_message_text(network_input_text(), reply_markup=network_keyboard())
+            await query.edit_message_text(
+                network_input_text(),
+                reply_markup=network_keyboard(),
+            )
             return
 
     if action == "module":
@@ -79,7 +87,7 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if module is None or not module.enabled:
             await query.edit_message_text(
                 "⚠️ هذه الوحدة غير متاحة حاليًا.",
-                reply_markup=home_keyboard(),
+                reply_markup=home_keyboard(mini_app_url),
             )
             return
 
@@ -88,20 +96,21 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{module.description}\n\n"
             "هذه نقطة الدخول الرسمية للوحدة. لا يتم تنفيذ عمليات "
             "حساسة قبل التحقق من نطاق التفويض.",
-            reply_markup=home_keyboard(),
+            reply_markup=home_keyboard(mini_app_url),
             parse_mode="Markdown",
         )
         return
 
     await query.edit_message_text(
         "🏠 *Aliali Cyber Operations*\n\nاختر طبقة:",
-        reply_markup=home_keyboard(),
+        reply_markup=home_keyboard(mini_app_url),
         parse_mode="Markdown",
     )
 
 
 def build_application(settings: Settings) -> Application:
     app = Application.builder().token(settings.bot_token).build()
+    app.bot_data["mini_app_url"] = settings.mini_app_url
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(callbacks))
     return app
