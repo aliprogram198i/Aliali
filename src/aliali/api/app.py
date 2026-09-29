@@ -88,7 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for module in registry.all()
             if module.enabled
         ]
-        categories = sorted({module.category for module in modules})
+        categories = sorted({module["category"] for module in modules})
         return {
             "status": "operational",
             "data_source": "module_registry",
