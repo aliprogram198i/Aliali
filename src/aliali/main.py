@@ -9,6 +9,7 @@ from .modules.facebook import FACEBOOK_MODULES
 from .modules.network import NETWORK_MODULES
 from .ui.home import home_keyboard, home_text
 from .ui.menus import category_text, module_keyboard
+from .ui.network import network_input_text, network_keyboard, network_text, network_dashboard_text
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,15 +36,26 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await query.answer()
     action, _, value = query.data.partition(":")
 
-    if action == "menu" and value in {"facebook", "network"}:
-        title = "Facebook Operations" if value == "facebook" else "Network Security"
-        modules = registry.list_by_category(value)
+    if action == "menu" and value == "network":
+        await query.edit_message_text(network_text(), reply_markup=network_keyboard())
+        return
+
+    if action == "menu" and value == "facebook":
+        modules = registry.list_by_category("facebook")
         await query.edit_message_text(
-            category_text(title, modules),
+            category_text("Facebook Operations", modules),
             reply_markup=module_keyboard(modules),
             parse_mode="Markdown",
         )
         return
+
+    if action == "network":
+        if value == "dashboard":
+            await query.edit_message_text(network_dashboard_text(), reply_markup=network_keyboard())
+            return
+        if value in {"discover", "identity", "correlate", "geolocation", "device", "services", "iot", "exposure", "topology", "changes", "evidence"}:
+            await query.edit_message_text(network_input_text(), reply_markup=network_keyboard())
+            return
 
     if action == "module":
         module = registry.get(value)
