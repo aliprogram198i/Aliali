@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from enum import StrEnum
 import ipaddress
 import re
+from dataclasses import dataclass
+from enum import StrEnum
 
 
 class NetworkIdentifierType(StrEnum):
