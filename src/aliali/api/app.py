@@ -8,10 +8,19 @@ from ..core.registry import ModuleRegistry
 from ..modules.facebook import FACEBOOK_MODULES
 from ..modules.network import NETWORK_MODULES
 from .auth import validate_telegram_init_data
+from .network import normalize_target, reverse_dns, tcp_connectivity
 
 
 class SessionRequest(BaseModel):
     init_data: str
+
+
+class NetworkOperationRequest(SessionRequest):
+    module_key: str
+    operation: str
+    ip: str | None = None
+    mac: str | None = None
+    port: int | None = None
 
 
 def _registry() -> ModuleRegistry:
@@ -103,5 +112,81 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
             "modules": modules,
         }
+
+    @app.post("/api/v1/network/operate")
+    async def network_operate(
+        request: NetworkOperationRequest,
+        x_telegram_init_data: str | None = Header(default=None),
+    ) -> dict[str, object]:
+        init_data = x_telegram_init_data or request.init_data
+        _authenticate(init_data, resolved_settings)
+
+        registry = _registry()
+        module = registry.get(request.module_key)
+        if module is None or not module.enabled or module.category != "network":
+            raise HTTPException(status_code=404, detail="Network module not found")
+
+        try:
+            target = normalize_target(ip=request.ip, mac=request.mac)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        if target.kind not in module.metadata.get("identifier_types", []):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Module does not accept {target.kind.upper()} targets",
+            )
+
+        if request.operation == "validate":
+            return {
+                "ok": True,
+                "operation": "validate",
+                "module": module.key,
+                "target": {"type": target.kind, "value": target.value},
+                "message": "الهدف صالح ومطابق لنوع الوحدة.",
+            }
+
+        if request.operation == "reverse_dns":
+            if target.kind != "ip":
+                raise HTTPException(
+                    status_code=422,
+                    detail="Reverse DNS requires an IP address",
+                )
+            hostname = reverse_dns(target.value)
+            return {
+                "ok": True,
+                "operation": "reverse_dns",
+                "module": module.key,
+                "target": {"type": target.kind, "value": target.value},
+                "hostname": hostname,
+                "message": (
+                    "تم العثور على اسم مضيف."
+                    if hostname
+                    else "لم يتم العثور على اسم مضيف عبر Reverse DNS."
+                ),
+            }
+
+        if request.operation == "connectivity":
+            if target.kind != "ip" or request.port is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Connectivity test requires an IP address and port",
+                )
+            reachable = tcp_connectivity(target.value, request.port)
+            return {
+                "ok": True,
+                "operation": "connectivity",
+                "module": module.key,
+                "target": {"type": target.kind, "value": target.value},
+                "port": request.port,
+                "reachable": reachable,
+                "message": (
+                    "الاتصال بالمنفذ نجح."
+                    if reachable
+                    else "تعذر إنشاء اتصال بالمنفذ ضمن مهلة الاختبار."
+                ),
+            }
+
+        raise HTTPException(status_code=400, detail="Unsupported network operation")
 
     return app
