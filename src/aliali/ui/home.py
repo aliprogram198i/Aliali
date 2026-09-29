@@ -1,15 +1,25 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+
 def home_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔎 Quick Scan", callback_data="menu:scan")],
-        [InlineKeyboardButton("🔵 Facebook Ops", callback_data="menu:facebook"),
-         InlineKeyboardButton("🌐 Network Security", callback_data="menu:network")],
-        [InlineKeyboardButton("📱 Identity Intelligence", callback_data="menu:identity"),
-         InlineKeyboardButton("🚨 Cases", callback_data="menu:cases")],
-        [InlineKeyboardButton("📊 Reports", callback_data="menu:reports"),
-         InlineKeyboardButton("⚙️ Settings", callback_data="menu:settings")],
-    ])
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("🔎 Quick Scan", callback_data="menu:scan")],
+            [
+                InlineKeyboardButton("🔵 Facebook Ops", callback_data="menu:facebook"),
+                InlineKeyboardButton("🌐 Network Security", callback_data="menu:network"),
+            ],
+            [
+                InlineKeyboardButton("📱 Identity Intelligence", callback_data="menu:identity"),
+                InlineKeyboardButton("🚨 Cases", callback_data="menu:cases"),
+            ],
+            [
+                InlineKeyboardButton("📊 Reports", callback_data="menu:reports"),
+                InlineKeyboardButton("⚙️ Settings", callback_data="menu:settings"),
+            ],
+        ]
+    )
+
 
 def home_text() -> str:
     return (
