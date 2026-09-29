@@ -59,5 +59,9 @@ def test_dashboard_returns_real_module_catalog_without_fake_metrics() -> None:
         "changes": None,
         "evidence": None,
     }
+    assert payload["module_summary"]["total_enabled"] == len(payload["modules"])
+    assert payload["module_summary"]["categories"] == sorted(
+        {module["category"] for module in payload["modules"]}
+    )
     assert payload["modules"]
     assert all(module["enabled"] for module in payload["modules"])

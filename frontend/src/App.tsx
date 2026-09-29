@@ -21,6 +21,10 @@ type Dashboard = {
     changes: number | null;
     evidence: number | null;
   };
+  module_summary: {
+    total_enabled: number;
+    categories: string[];
+  };
   modules: DashboardModule[];
 };
 
@@ -99,6 +103,13 @@ function App() {
       <section className="section-head">
         <div><h2>الوحدات</h2><p>الكتالوج يأتي من Backend، والواجهة لا تحتوي على منطق أمني حساس.</p></div>
       </section>
+      {dashboard && (
+        <section className="card">
+          <strong>ملخص الوحدات</strong>
+          <span className="metric">{dashboard.module_summary.total_enabled}</span>
+          <small>{dashboard.module_summary.categories.join(" · ")}</small>
+        </section>
+      )}
       <section className="module-list">
         {dashboard?.modules.map((module) => (
           <button className="module" key={module.key} type="button">
