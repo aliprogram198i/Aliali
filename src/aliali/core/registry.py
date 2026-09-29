@@ -1,5 +1,6 @@
 from .models import ModuleInfo
 
+
 class ModuleRegistry:
     def __init__(self) -> None:
         self._modules: dict[str, ModuleInfo] = {}
