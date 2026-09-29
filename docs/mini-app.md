@@ -12,9 +12,9 @@ Telegram provides `Telegram.WebApp.initData` to the Mini App. The Aliali API val
 
 - `GET /healthz` — liveness only.
 - `POST /api/v1/session` — validates Telegram init data and returns the authenticated Telegram user plus capability flags.
-- `POST /api/v1/dashboard` — validates Telegram init data and returns the enabled module catalog plus explicitly nullable metrics.
+- `POST /api/v1/dashboard` — validates Telegram init data and returns the enabled module catalog, a registry-derived module summary, plus explicitly nullable operational metrics.
 
-The dashboard is read-only in this phase. Metrics remain `null` until a real persistence/provider layer supplies them; the API never invents operational counts. Security-sensitive operations will be added only behind the existing authorization and execution policies.
+The dashboard is read-only in this phase. Asset/change/evidence metrics remain `null` until a real persistence/provider layer supplies them; the API never invents operational counts. The module summary is derived directly from the backend registry and contains only enabled-module counts and categories. Security-sensitive operations will be added only behind the existing authorization and execution policies.
 
 ## Running the API
 
