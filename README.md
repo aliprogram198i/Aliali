@@ -1,37 +1,43 @@
 # Aliali
 
-Cyber Security Operations Platform — modular, extensible, authorization-first security tooling.
+Telegram Mini App + FastAPI service for a simple, authenticated network lookup.
 
-## Interfaces
+## What the app does
 
-- **Telegram Bot** — entry point, notifications and quick actions.
-- **Telegram Mini App** — React/Vite operational interface.
-- **Aliali API** — FastAPI boundary for authenticated Mini App sessions and future module operations.
+When the Mini App opens, the user sees one field:
 
-The Mini App is a presentation layer. Security-sensitive authorization, orchestration, evidence and execution remain server-side.
+- **IP address** — looks up the public network/organization, ISP, ASN, domain and approximate location.
+- **MAC address** — looks up the registered hardware vendor.
 
-## Network Management
+The backend performs the lookup on the server after validating Telegram Mini App initData.
 
-The Mini App groups enabled network modules under **إدارة الشبكات**. Authorized operators can submit an IP or MAC target for server-side validation; IP targets can also use reverse DNS and TCP connectivity checks. These operations require authenticated Telegram Mini App session data and execute from the API service's network context.
+Private IP ranges such as 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16 are not treated as public Internet addresses, so the app does not invent a network identity for them. citeturn0search1turn0search2
+
+MAC lookup identifies the registered hardware vendor/OUI; a MAC address does not provide a public Internet network name. The implementation uses MACVendors' public lookup API for vendor identification. citeturn1search0turn1search5
+
+## Runtime
+
+- Frontend: React + Vite
+- Backend: FastAPI
+- Authentication: Telegram Mini App initData
+- IP lookup: public IP/network metadata
+- MAC lookup: vendor/OUI lookup
+- No port scanning
+- No network discovery
+- No fabricated results
 
 ## Development
 
 ### Backend
 
-```bash
-pip install -e ".[dev]"
-python -m pytest
-python -m ruff check .
-```
+    pip install -e ".[dev]"
+    python -m pytest
+    python -m ruff check .
 
 ### Mini App
 
-```bash
-cd frontend
-npm install
-npm run build
-```
+    cd frontend
+    npm install
+    npm run build
 
-Set `MINI_APP_URL` for the Telegram bot and `VITE_API_BASE_URL` for the frontend API origin.
-
-Production deployments must be verified against the deployed commit and healthcheck before the release is considered complete.
+Set MINI_APP_URL for the API CORS origin and VITE_API_BASE_URL for the frontend API origin.
