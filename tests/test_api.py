@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from aliali.api.app import create_app
 from aliali.config import Settings
 
-
 BOT_TOKEN = "123456:test-token"
 
 
