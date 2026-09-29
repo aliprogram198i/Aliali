@@ -15,6 +15,16 @@ Telegram provides `Telegram.WebApp.initData` to the Mini App. The Aliali API val
 
 The session endpoint is intentionally small in Phase 1. Network operations and other security-sensitive actions will be added only behind the existing authorization and execution policies.
 
+## Running the API
+
+From the repository root:
+
+```bash
+uvicorn aliali.api.server:app --host 0.0.0.0 --port 8000
+```
+
+The runtime must provide `BOT_TOKEN`. For a browser-based Mini App hosted on a different origin, set `MINI_APP_URL` to the exact HTTPS frontend origin.
+
 ## Deployment boundary
 
 The frontend requires an HTTPS origin suitable for Telegram Mini Apps. The API is a separate HTTPS service. No production deployment or Telegram BotFather configuration is changed by this phase.
