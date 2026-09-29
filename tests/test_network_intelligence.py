@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -26,7 +26,7 @@ def test_network_asset_profile_tracks_evidence_and_confidence():
             value="camera-lab",
             kind=EvidenceKind.OBSERVED,
             confidence=Confidence.HIGH,
-            observed_at=datetime.now(timezone.utc),
+            observed_at=datetime.now(UTC),
         )
     )
     profile.add_evidence(
@@ -37,7 +37,7 @@ def test_network_asset_profile_tracks_evidence_and_confidence():
             value="aa:bb:cc:dd:ee:ff",
             kind=EvidenceKind.VERIFIED,
             confidence=Confidence.MEDIUM,
-            observed_at=datetime.now(timezone.utc),
+            observed_at=datetime.now(UTC),
         )
     )
 
@@ -94,7 +94,7 @@ def test_single_evidence_confidence_is_preserved(confidence, expected):
             value="unknown",
             kind=EvidenceKind.INFERRED,
             confidence=confidence,
-            observed_at=datetime.now(timezone.utc),
+            observed_at=datetime.now(UTC),
         )
     )
 
