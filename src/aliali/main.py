@@ -9,7 +9,7 @@ from .modules.facebook import FACEBOOK_MODULES
 from .modules.network import NETWORK_MODULES
 from .ui.home import home_keyboard, home_text
 from .ui.menus import category_text, module_keyboard
-from .ui.network import network_input_text, network_keyboard, network_text, network_dashboard_text
+from .ui.network import (\n    network_dashboard_text,\n    network_input_text,\n    network_keyboard,\n    network_text,\n)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
