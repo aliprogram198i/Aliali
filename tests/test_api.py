@@ -4,9 +4,10 @@ import json
 import time
 from urllib.parse import urlencode
 
+from fastapi.testclient import TestClient
+
 from aliali.api.app import create_app
 from aliali.config import Settings
-from fastapi.testclient import TestClient
 
 
 BOT_TOKEN = "123456:test-token"
