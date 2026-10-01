@@ -39,12 +39,32 @@ def _fetch_text(url: str) -> str:
 
 def _lookup_ip(ip: str) -> dict[str, object]:
     address = ipaddress.ip_address(ip.strip())
+    base = {
+        "type": "ip",
+        "target": str(address),
+        "ip_version": f"IPv{address.version}",
+        "scope": "Public" if address.is_global else "Private/Local",
+    }
+
     if not address.is_global:
         return {
-            "ok": True, "type": "ip", "target": str(address),
-            "name": "عنوان IP خاص/محلي", "organization": None, "isp": None,
-            "asn": None, "location": None,
+            "ok": True,
+            **base,
+            "name": "عنوان IP خاص/محلي",
+            "organization": None,
+            "isp": None,
+            "asn": None,
+            "domain": None,
+            "location": None,
+            "country": None,
+            "region": None,
+            "city": None,
+            "latitude": None,
+            "longitude": None,
+            "timezone": None,
+            "is_eu": None,
             "message": "هذا عنوان خاص ولا يمكن ربطه باسم شبكة على الإنترنت العام. يلزم عنوان IP عام لإجراء البحث.",
+            "source": "Local address classification",
         }
 
     payload = _fetch_json(f"https://ipwho.is/{quote(str(address), safe='')}")
@@ -54,6 +74,9 @@ def _lookup_ip(ip: str) -> dict[str, object]:
     connection = payload.get("connection")
     if not isinstance(connection, dict):
         connection = {}
+    timezone = payload.get("timezone")
+    if not isinstance(timezone, dict):
+        timezone = {}
 
     organization = connection.get("org") or connection.get("isp")
     isp = connection.get("isp")
@@ -63,14 +86,35 @@ def _lookup_ip(ip: str) -> dict[str, object]:
     ]
 
     return {
-        "ok": True, "type": "ip", "target": str(address),
+        "ok": True,
+        **base,
         "name": organization or isp or "شبكة غير معروفة",
-        "organization": organization, "isp": isp,
+        "organization": organization,
+        "isp": isp,
         "asn": connection.get("asn"),
-        "location": ", ".join(location_parts) or None,
         "domain": connection.get("domain"),
-        "message": "تم العثور على معلومات الشبكة من مصدر إنترنت عام.",
+        "location": ", ".join(location_parts) or None,
+        "country": payload.get("country"),
+        "country_code": payload.get("country_code"),
+        "region": payload.get("region"),
+        "city": payload.get("city"),
+        "continent": payload.get("continent"),
+        "latitude": payload.get("latitude"),
+        "longitude": payload.get("longitude"),
+        "timezone": timezone.get("id") or timezone.get("utc"),
+        "is_eu": payload.get("is_eu"),
+        "message": "تم العثور على معلومات الشبكة من مصدر إنترنت عام. الموقع جغرافي تقريبي.",
+        "source": "ipwho.is",
     }
+
+
+def _mac_assignment(mac: str) -> str:
+    first_octet = int(mac.split(":")[0], 16)
+    if first_octet & 0x01:
+        return "Multicast"
+    if first_octet & 0x02:
+        return "Locally administered"
+    return "Globally administered"
 
 
 def _lookup_mac(mac: str) -> dict[str, object]:
@@ -78,11 +122,19 @@ def _lookup_mac(mac: str) -> dict[str, object]:
     vendor = _fetch_text(f"https://api.macvendors.com/{quote(normalized, safe='')}")
     vendor = vendor or "غير معروف"
     return {
-        "ok": True, "type": "mac", "target": normalized,
+        "ok": True,
+        "type": "mac",
+        "target": normalized,
         "name": vendor,
         "organization": vendor if vendor != "غير معروف" else None,
-        "isp": None, "asn": None, "location": None,
-        "message": "تم تعريف الشركة المصنّعة لعنوان MAC. عنوان MAC لا يحدد اسم شبكة عامة على الإنترنت.",
+        "isp": None,
+        "asn": None,
+        "domain": None,
+        "location": None,
+        "oui": normalized[:8],
+        "assignment": _mac_assignment(normalized),
+        "message": "تم تعريف الشركة المصنّعة من OUI. عنوان MAC لا يحدد اسم شبكة عامة أو موقع الجهاز على الإنترنت.",
+        "source": "macvendors.com",
     }
 
 
