@@ -37,27 +37,39 @@ def test_private_ip_is_not_looked_up_online(monkeypatch) -> None:
     response = client.post("/api/v1/lookup", json={"init_data": _init_data(), "target": "192.168.1.1"})
     assert response.status_code == 200
     assert response.json()["name"] == "عنوان IP خاص/محلي"
+    assert response.json()["scope"] == "Private/Local"
 
 
-def test_public_ip_returns_network_name(monkeypatch) -> None:
+def test_public_ip_returns_network_details(monkeypatch) -> None:
     monkeypatch.setattr(lookup, "_fetch_json", lambda _: {
-        "success": True, "city": "Mountain View", "region": "California", "country": "United States",
+        "success": True, "type": "IPv4", "city": "Mountain View", "region": "California",
+        "country": "United States", "country_code": "US", "continent": "North America",
+        "latitude": 37.386, "longitude": -122.0838, "is_eu": False,
         "connection": {"org": "Google LLC", "isp": "Google LLC", "asn": 15169, "domain": "google.com"},
+        "timezone": {"id": "America/Los_Angeles", "utc": "-08:00"},
     })
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
     response = client.post("/api/v1/lookup", json={"init_data": _init_data(), "target": "8.8.8.8"})
     assert response.status_code == 200
-    assert response.json()["name"] == "Google LLC"
-    assert response.json()["asn"] == 15169
+    payload = response.json()
+    assert payload["name"] == "Google LLC"
+    assert payload["asn"] == 15169
+    assert payload["country_code"] == "US"
+    assert payload["latitude"] == 37.386
+    assert payload["timezone"] == "America/Los_Angeles"
+    assert payload["source"] == "ipwho.is"
 
 
-def test_mac_returns_vendor(monkeypatch) -> None:
+def test_mac_returns_vendor_and_oui(monkeypatch) -> None:
     monkeypatch.setattr(lookup, "_fetch_text", lambda _: "Example Vendor")
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
     response = client.post("/api/v1/lookup", json={"init_data": _init_data(), "target": "aa-bb-cc-dd-ee-ff"})
     assert response.status_code == 200
-    assert response.json()["name"] == "Example Vendor"
-    assert response.json()["target"] == "AA:BB:CC:DD:EE:FF"
+    payload = response.json()
+    assert payload["name"] == "Example Vendor"
+    assert payload["target"] == "AA:BB:CC:DD:EE:FF"
+    assert payload["oui"] == "AA:BB:CC"
+    assert payload["assignment"] == "Locally administered"
 
 
 def test_invalid_target_is_rejected() -> None:
