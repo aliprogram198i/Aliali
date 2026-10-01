@@ -41,3 +41,8 @@ MAC lookup identifies the registered hardware vendor/OUI. A MAC address does not
     npm run build
 
 Set MINI_APP_URL for the API CORS origin and VITE_API_BASE_URL for the frontend API origin.
+
+
+## Network intelligence output
+
+The lookup response distinguishes public/private IPs and MAC/OUI inputs. Public IP results may include organization, ISP, ASN, domain, country, region, city, continent, approximate coordinates, timezone, and source. MAC results include vendor, OUI, and assignment type. The service does not perform port scans, device discovery, or private-network enumeration.
