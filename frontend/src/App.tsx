@@ -29,10 +29,6 @@ type Identity = {
   source?: string | null;
   verified_at?: string | null;
   note?: string | null;
-  source?: string | null;
-  checked_at?: string | null;
-  evidence?: unknown;
-  method?: string | null;
 };
 
 type SocialApp = {
@@ -41,6 +37,10 @@ type SocialApp = {
   status: string;
   verification?: string | null;
   note?: string | null;
+  source?: string | null;
+  checked_at?: string | null;
+  evidence?: unknown;
+  method?: string | null;
 };
 
 type CurrentLocation = {
