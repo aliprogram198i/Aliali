@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+import asyncio
 from urllib import error, request
 
 from .config import Settings
@@ -89,7 +90,8 @@ async def analyze_with_openai(result: dict[str, Any], settings: Settings) -> dic
         method="POST",
     )
     try:
-        with request.urlopen(req, timeout=20) as response:
+        response = await asyncio.to_thread(request.urlopen, req, timeout=20)
+        with response:
             raw = response.read().decode("utf-8")
     except (error.HTTPError, error.URLError, TimeoutError) as exc:
         return {"status": "provider_error", "provider": "openai", "model": settings.openai_model, "message": "تعذر الوصول إلى مزود AI؛ بقيت النتيجة الحتمية هي مصدر الحقيقة.", "error_type": type(exc).__name__}
@@ -98,7 +100,7 @@ async def analyze_with_openai(result: dict[str, Any], settings: Settings) -> dic
         response_payload = json.loads(raw)
         analysis = json.loads(_extract_output_text(response_payload))
         if not isinstance(analysis, dict):
-            raise ValueError("AI output is not an object")
+            raise TypeError("AI output is not an object")
     except (json.JSONDecodeError, ValueError, TypeError) as exc:
         return {"status": "invalid_provider_output", "provider": "openai", "model": settings.openai_model, "message": "أعاد مزود AI مخرجات غير صالحة؛ لم يتم اعتمادها.", "error_type": type(exc).__name__}
 
