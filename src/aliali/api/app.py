@@ -108,8 +108,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_rate_limit(user_id)
         snapshot = evidence_snapshots.get(request.analysis_id)
-        if not snapshot:
-            raise HTTPException(status_code=404, detail="انتهت صلاحية لقطة الأدلة. أعد البحث ثم شغّل التحليل.")
+        if not snapshot or snapshot.get("owner_id") != user_id:
+            raise HTTPException(status_code=404, detail="لقطة الأدلة غير متاحة لهذه الجلسة.")
         return await analyze_with_openai({}, resolved_settings, snapshot=snapshot)
 
     @app.post("/api/v1/lookup")
@@ -128,6 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             result = await lookup_phone(request.target)
             snapshot = create_evidence_snapshot(result)
+            snapshot["owner_id"] = user_id
             evidence_snapshots[snapshot["analysis_id"]] = snapshot
             result["analysis_id"] = snapshot["analysis_id"]
             result["ai_analysis"] = {
