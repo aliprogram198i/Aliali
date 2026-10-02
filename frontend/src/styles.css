@@ -123,3 +123,20 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 
 .location-evidence{margin-top:7px;padding:12px;border:1px solid #263b52;border-radius:12px;background:#0b1521}.location-evidence-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.location-evidence-head>div{display:flex;flex-direction:column;gap:4px}.location-evidence-head strong{color:#dbe7f3;font-size:13px}.location-evidence-head span{color:#71859c;font-size:9px;line-height:1.5}.location-source{margin-top:8px;color:#647b92;font-size:8px;line-height:1.5;overflow-wrap:anywhere}
+.result-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.secondary-action{min-height:38px;border-color:#263f57;background:#0c1b2a;color:#a9bdd2;font-size:9px}
+.secondary-action:hover{border-color:#527da5;background:#10253a;color:#e8f1fa}
+.advanced-panel{margin-top:18px;border:1px solid #20374d;border-radius:14px;background:#08131f;overflow:hidden}
+.advanced-panel summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;cursor:pointer;list-style:none}
+.advanced-panel summary::-webkit-details-marker{display:none}
+.advanced-panel summary>span{display:flex;flex-direction:column;gap:3px}
+.advanced-panel summary b{color:#d8e6f4;font-size:10px}
+.advanced-panel summary small{color:#6f859b;font-size:8px}
+.advanced-panel summary>strong{flex:0 0 auto;padding:5px 8px;border:1px solid #2a4259;border-radius:999px;color:#89a5c0;font-size:8px}
+.advanced-panel[open] summary{border-bottom:1px solid #1b3044;background:#0b1927}
+.advanced-panel[open] summary>strong{color:#a9d0b9;border-color:#315846;background:#10231c}
+.advanced-panel>.section-title:first-child{margin-top:14px}
+.advanced-panel>.evidence-list,.advanced-panel>.source-card,.advanced-panel>.section-title,.advanced-panel>.known-unknown,.advanced-panel>.timeline,.advanced-panel>.limitations{margin-left:12px;margin-right:12px}
+.advanced-panel>.section-title{margin-top:14px}
+.advanced-panel>.limitations{margin-bottom:12px}
+@media (max-width:560px){.result-actions{grid-template-columns:1fr}.advanced-panel summary{padding:11px}.advanced-panel summary>strong{font-size:7px}}
