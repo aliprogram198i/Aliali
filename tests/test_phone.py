@@ -30,3 +30,12 @@ def test_lookup_phone_accepts_arabic_digits_without_persisting_input():
     result = _lookup_phone("+٣٣١٤٢٣٤٥٦٧٨")
     assert result["e164"] == "+33142345678"
     assert result["target"] == "+33142345678"
+
+
+def test_lookup_phone_exposes_contact_channel_states():
+    result = _lookup_phone("+33142345678")
+    channels = {item["id"]: item for item in result["social_apps"]}
+    assert {"whatsapp", "telegram", "other"} <= channels.keys()
+    assert channels["whatsapp"]["status"] == "number_contact_supported"
+    assert channels["telegram"]["status"] == "privacy_dependent"
+    assert channels["other"]["status"] == "not_verifiable_from_number"
