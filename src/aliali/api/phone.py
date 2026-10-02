@@ -6,9 +6,9 @@ import phonenumbers
 from phonenumbers import carrier, geocoder, number_type, timezone
 from phonenumbers.phonenumberutil import NumberParseException
 
-from .intelligence import build_intelligence
-from .identity import build_identity_registry, resolve_identity
 from ..config import Settings
+from .identity import build_identity_registry, resolve_identity
+from .intelligence import build_intelligence
 from .social import PROVIDER_REGISTRY, check_social_presence_with_ledger
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
