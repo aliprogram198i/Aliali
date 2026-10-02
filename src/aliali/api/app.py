@@ -1,11 +1,12 @@
 from collections import defaultdict, deque
+from datetime import UTC, datetime
 from time import monotonic
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ..ai import analyze_with_openai, create_evidence_snapshot
+from ..ai import SNAPSHOT_TTL_SECONDS, analyze_with_openai, build_audit_record, create_evidence_snapshot
 from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import create_session_token, validate_session_token, validate_telegram_init_data
@@ -47,9 +48,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Process-local guardrail. It intentionally does not persist phone numbers or query targets.
     request_windows: dict[str, deque[float]] = defaultdict(deque)
+    ai_request_windows: dict[str, deque[float]] = defaultdict(deque)
     evidence_snapshots: dict[str, dict[str, object]] = {}
+    audit_ledger: deque[dict[str, object]] = deque(maxlen=1000)
     rate_limit = 20
+    ai_rate_limit = 6
     window_seconds = 60.0
+    max_snapshots = 500
+    max_snapshots_per_user = 20
 
     def authenticate_request(init_data: str, session_token: str | None) -> dict[str, object]:
         if session_token:
@@ -59,6 +65,47 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             except SecurityError:
                 pass
         return _authenticate(init_data, resolved_settings)
+
+    def purge_expired_snapshots() -> None:
+        now = datetime.now(UTC)
+        expired: list[str] = []
+        for analysis_id, snapshot in evidence_snapshots.items():
+            created_at = snapshot.get("created_at")
+            if not isinstance(created_at, str):
+                expired.append(analysis_id)
+                continue
+            try:
+                created = datetime.fromisoformat(created_at)
+            except ValueError:
+                expired.append(analysis_id)
+                continue
+            if (now - created).total_seconds() >= SNAPSHOT_TTL_SECONDS:
+                expired.append(analysis_id)
+        for analysis_id in expired:
+            evidence_snapshots.pop(analysis_id, None)
+
+    def enforce_ai_rate_limit(user_id: object) -> None:
+        now = monotonic()
+        key = str(user_id)
+        window = ai_request_windows[key]
+        while window and now - window[0] >= window_seconds:
+            window.popleft()
+        if len(window) >= ai_rate_limit:
+            raise HTTPException(
+                status_code=429,
+                detail="تم تجاوز حد التحليل الذكي المؤقت. حاول مرة أخرى بعد قليل.",
+                headers={"Retry-After": str(int(window_seconds))},
+            )
+        window.append(now)
+
+    def enforce_snapshot_quota(user_id: object) -> None:
+        user_snapshots = [
+            (analysis_id, snapshot)
+            for analysis_id, snapshot in evidence_snapshots.items()
+            if snapshot.get("owner_id") == user_id
+        ]
+        if len(user_snapshots) >= max_snapshots_per_user:
+            evidence_snapshots.pop(user_snapshots[0][0], None)
 
     def enforce_rate_limit(user_id: object) -> None:
         now = monotonic()
@@ -106,11 +153,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         user_id = user.get("id") if isinstance(user, dict) else None
         if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
-        enforce_rate_limit(user_id)
+        enforce_ai_rate_limit(user_id)
+        purge_expired_snapshots()
         snapshot = evidence_snapshots.get(request.analysis_id)
         if not snapshot or snapshot.get("owner_id") != user_id:
             raise HTTPException(status_code=404, detail="لقطة الأدلة غير متاحة لهذه الجلسة.")
-        return await analyze_with_openai({}, resolved_settings, snapshot=snapshot)
+        started = monotonic()
+        result = await analyze_with_openai({}, resolved_settings, snapshot=snapshot)
+        audit_ledger.append(
+            build_audit_record(
+                result,
+                duration_ms=int((monotonic() - started) * 1000),
+            )
+        )
+        return result
+
+    @app.get("/api/v1/ai-audit")
+    async def ai_audit(
+        init_data: str = "",
+        x_telegram_init_data: str | None = Header(default=None),
+        x_aliali_session: str | None = Header(default=None),
+    ) -> dict[str, object]:
+        effective_init_data = x_telegram_init_data or init_data
+        identity = authenticate_request(effective_init_data, x_aliali_session)
+        user = identity.get("user")
+        if not isinstance(user, dict) or user.get("id") is None:
+            raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
+        return {"items": list(audit_ledger)}
 
     @app.post("/api/v1/lookup")
     async def lookup(
@@ -125,8 +194,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_rate_limit(user_id)
+        purge_expired_snapshots()
         try:
             result = await lookup_phone(request.target)
+            enforce_snapshot_quota(user_id)
             snapshot = create_evidence_snapshot(result)
             snapshot["owner_id"] = user_id
             evidence_snapshots[snapshot["analysis_id"]] = snapshot
@@ -137,7 +208,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "model": resolved_settings.openai_model if resolved_settings.ai_enabled else None,
                 "message": "لقطة الأدلة جاهزة للتحليل دون إعادة تنفيذ البحث.",
             }
-            if len(evidence_snapshots) > 500:
+            while len(evidence_snapshots) > max_snapshots:
                 oldest = next(iter(evidence_snapshots))
                 evidence_snapshots.pop(oldest, None)
             return result
