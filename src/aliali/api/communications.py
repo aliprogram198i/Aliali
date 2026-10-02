@@ -5,6 +5,7 @@ import hmac
 import secrets
 import sqlite3
 import threading
+from pathlib import Path
 import urllib.parse
 import urllib.request
 import uuid
@@ -41,6 +42,7 @@ class CommunicationError(RuntimeError):
 class LocationStore:
     def __init__(self, path: str) -> None:
         self.path = path
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         with self._connect() as db:
             db.execute(
