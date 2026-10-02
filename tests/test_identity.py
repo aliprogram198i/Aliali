@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Self
-
 import json
+from typing import Self
 
 from aliali.api import identity
 
