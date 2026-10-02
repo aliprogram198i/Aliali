@@ -134,6 +134,28 @@ def test_ai_audit_is_non_sensitive_and_authenticated() -> None:
     assert "46" not in encoded
 
 
+def test_ai_audit_isolated_between_users() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    first = _init_data({"id": 47, "first_name": "First"})
+    second = _init_data({"id": 48, "first_name": "Second"})
+    lookup = client.post(
+        "/api/v1/lookup",
+        json={"init_data": first, "target": "+33142345678"},
+    )
+    analysis_id = lookup.json()["analysis_id"]
+    response = client.post(
+        "/api/v1/ai-analysis",
+        json={"init_data": first, "analysis_id": analysis_id},
+    )
+    assert response.status_code == 200
+    first_audit = client.post("/api/v1/ai-audit", json={"init_data": first})
+    second_audit = client.post("/api/v1/ai-audit", json={"init_data": second})
+    assert first_audit.status_code == 200
+    assert second_audit.status_code == 200
+    assert len(first_audit.json()["items"]) == 1
+    assert second_audit.json()["items"] == []
+
+
 def test_ai_analysis_rejects_unknown_snapshot() -> None:
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
     init_data = _init_data({"id": 44, "first_name": "Missing"})
