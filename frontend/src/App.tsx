@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Call, Device } from "@twilio/voice-sdk";
+import { Device, type Call } from "@twilio/voice-sdk";
 
 type EvidenceItem = {
   field: string;
