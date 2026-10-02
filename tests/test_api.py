@@ -93,6 +93,47 @@ def test_ai_analysis_uses_lookup_snapshot_without_target() -> None:
     assert payload["verification"]["verified"] is True
 
 
+def test_ai_analysis_has_independent_rate_limit() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    init_data = _init_data({"id": 45, "first_name": "AIRate"})
+    lookup = client.post(
+        "/api/v1/lookup",
+        json={"init_data": init_data, "target": "+33142345678"},
+    )
+    assert lookup.status_code == 200
+    analysis_id = lookup.json()["analysis_id"]
+    responses = [
+        client.post(
+            "/api/v1/ai-analysis",
+            json={"init_data": init_data, "analysis_id": analysis_id},
+        )
+        for _ in range(7)
+    ]
+    assert responses[-1].status_code == 429
+    assert responses[-1].headers["retry-after"] == "60"
+
+
+def test_ai_audit_is_non_sensitive_and_authenticated() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    init_data = _init_data({"id": 46, "first_name": "Audit"})
+    lookup = client.post(
+        "/api/v1/lookup",
+        json={"init_data": init_data, "target": "+33142345678"},
+    )
+    analysis_id = lookup.json()["analysis_id"]
+    response = client.post(
+        "/api/v1/ai-analysis",
+        json={"init_data": init_data, "analysis_id": analysis_id},
+    )
+    assert response.status_code == 200
+    audit = client.get("/api/v1/ai-audit", params={"init_data": init_data})
+    assert audit.status_code == 200
+    body = audit.json()
+    encoded = json.dumps(body, ensure_ascii=False)
+    assert "+33142345678" not in encoded
+    assert "46" not in encoded
+
+
 def test_ai_analysis_rejects_unknown_snapshot() -> None:
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
     init_data = _init_data({"id": 44, "first_name": "Missing"})
