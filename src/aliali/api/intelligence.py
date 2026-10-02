@@ -114,7 +114,7 @@ def build_intelligence(
             {"event": "location_checked", "label": "فحص مصدر الموقع المباشر", "at": checked_at},
         ],
         "social_summary": [
-            {"id": app.get("id"), "name": app.get("name"), "verification": app.get("verification"), "status": app.get("status")}
+            {"id": app.get("id"), "name": app.get("name"), "verification": app.get("verification"), "status": app.get("status"), "source": app.get("source"), "checked_at": app.get("checked_at"), "evidence": app.get("evidence"), "method": app.get("method"), "note": app.get("note")}
             for app in social_apps
         ],
         "ai_analysis": {
