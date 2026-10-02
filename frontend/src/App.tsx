@@ -278,9 +278,9 @@ function App() {
             </div>
 
             <div className="section-title">📱 تطبيقات التواصل المرتبطة بطريقة البحث</div>
-            <div className="social-apps">
+            <div className="grid">
               {(result.social_apps ?? []).map((app) => (
-                <article className="social-app" key={app.id}>
+                <article className="row" key={app.id}>
                   <div className="social-app-head">
                     <div className="social-app-icon">{app.id === "whatsapp" ? "WA" : app.id === "telegram" ? "TG" : "•••"}</div>
                     <div>
@@ -288,12 +288,12 @@ function App() {
                       <span>{app.status === "number_contact_supported" ? "يدعم التواصل بالرقم" : app.status === "privacy_dependent" ? "يعتمد على الخصوصية" : "غير قابل للتحقق من الرقم وحده"}</span>
                     </div>
                   </div>
-                  <div className="social-app-status">{app.verification === "not_verified" ? "غير متحقق" : "غير مدعوم"}</div>
+                  <div>{app.verification === "not_verified" ? "غير متحقق" : "غير مدعوم"}</div>
                   <p>{app.note}</p>
                 </article>
               ))}
             </div>
-            <div className="social-app-note">هذه الطبقة تعرض التطبيقات التي يمكن أن تتعامل مع الرقم، ولا تدّعي أن الرقم يملك حسابًا فيها. إثبات وجود الحساب يحتاج مصدرًا يسمح بذلك وبطريقة لا تتجاوز إعدادات الخصوصية.</div>
+            <div className="identity-note"><span>🛡️</span><div><strong>حدود تحقق التطبيقات</strong><p>هذه الطبقة تعرض التطبيقات التي يمكن أن تتعامل مع الرقم، ولا تدّعي أن الرقم يملك حسابًا فيها. إثبات وجود الحساب يحتاج مصدرًا يسمح بذلك وبطريقة لا تتجاوز إعدادات الخصوصية.</p></div></div>
 
             <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
             <div className="grid">
