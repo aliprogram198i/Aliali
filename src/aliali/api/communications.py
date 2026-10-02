@@ -11,7 +11,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from html import escape
 
-from fastapi import HTTPException\n\nimport phonenumbers\nfrom phonenumbers.phonenumberutil import NumberParseException
+from fastapi import HTTPException
+
+import phonenumbers
+from phonenumbers.phonenumberutil import NumberParseException
 
 try:
     from twilio.jwt.access_token import AccessToken
