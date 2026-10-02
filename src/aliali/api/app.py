@@ -273,7 +273,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 send_sms,
                 account_sid=resolved_settings.twilio_account_sid,
                 auth_token=resolved_settings.twilio_auth_token,
-                from_number=resolved_settings.twilio_voice_from_number,
+                from_number=resolved_settings.twilio_sms_from_number,
                 to_number=number,
                 body="هذه رسالة من Aliali. يمكنك تجاهلها إذا لم تكن تتوقعها.",
             )
