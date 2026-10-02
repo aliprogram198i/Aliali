@@ -81,6 +81,7 @@ type LookupResult = {
   ok: boolean;
   type: "phone";
   target: string;
+  analysis_id?: string | null;
   international?: string | null;
   e164?: string | null;
   national?: string | null;
@@ -145,7 +146,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiResult, setAiResult] = useState<{ status?: string; provider?: string | null; model?: string | null; message?: string; analysis?: { summary?: string; evidence_interpretation?: string; cautions?: string[]; next_steps?: string[] } } | null>(null);
+  const [aiResult, setAiResult] = useState<{ status?: string; provider?: string | null; model?: string | null; message?: string; analysis?: { summary?: string; evidence_interpretation?: string; cautions?: string[]; next_steps?: string[]; claims?: Array<{ claim?: string; support?: string[]; confidence?: string }> }; verification?: { verified?: boolean; risk?: string; message?: string } } | null>(null);
   const webApp = window.Telegram?.WebApp;
 
   useEffect(() => {
@@ -202,15 +203,17 @@ function App() {
   }
 
   async function runAiAnalysis() {
-    const value = target.trim();
-    if (!value || !API_BASE || !webApp?.initData) return;
+    if (!result?.analysis_id || !API_BASE || !webApp?.initData) {
+      setError("أجرِ البحث أولًا للحصول على لقطة الأدلة.");
+      return;
+    }
     setAiBusy(true);
     setError("");
     try {
       const response = await fetch(API_BASE + "/api/v1/ai-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
-        body: JSON.stringify({ init_data: webApp.initData, target: value }),
+        body: JSON.stringify({ init_data: webApp.initData, analysis_id: result.analysis_id }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail ?? "تعذر تنفيذ التحليل الذكي.");
@@ -480,7 +483,9 @@ function App() {
                 <div className="source-row"><span>قراءة الأدلة</span><strong>{aiResult.analysis.evidence_interpretation}</strong></div>
                 <div className="source-row"><span>التحذيرات</span><strong>{(aiResult.analysis.cautions ?? []).join(" · ")}</strong></div>
                 <div className="source-row"><span>الخطوات التالية</span><strong>{(aiResult.analysis.next_steps ?? []).join(" · ")}</strong></div>
-                <div className="source-row"><span>المزود / النموذج</span><strong>{aiResult.provider ?? "—"} / {aiResult.model ?? "—"}</strong></div>
+                <div className="source-row"><span>التحقق</span><strong>{aiResult.verification?.verified ? "✓ اجتاز التحقق" : "—"}</strong></div>
+                <div className="source-row"><span>مخاطر التحليل</span><strong>{aiResult.verification?.risk ?? "—"}</strong></div>
+                <div className="source-row"><span>المزود / النموذج</span><strong>{aiResult.provider ?? "محرك حتمي"} / {aiResult.model ?? "—"}</strong></div>
               </div>
             ) : null}
 

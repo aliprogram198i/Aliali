@@ -72,3 +72,32 @@ def test_lookup_rate_limits_authenticated_user() -> None:
     ]
     assert responses[-1].status_code == 429
     assert responses[-1].headers["retry-after"] == "60"
+
+
+def test_ai_analysis_uses_lookup_snapshot_without_target() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    init_data = _init_data({"id": 43, "first_name": "Snapshot"})
+    lookup = client.post(
+        "/api/v1/lookup",
+        json={"init_data": init_data, "target": "+33142345678"},
+    )
+    assert lookup.status_code == 200
+    analysis_id = lookup.json()["analysis_id"]
+    response = client.post(
+        "/api/v1/ai-analysis",
+        json={"init_data": init_data, "analysis_id": analysis_id},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["analysis_id"] == analysis_id
+    assert payload["verification"]["verified"] is True
+
+
+def test_ai_analysis_rejects_unknown_snapshot() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    init_data = _init_data({"id": 44, "first_name": "Missing"})
+    response = client.post(
+        "/api/v1/ai-analysis",
+        json={"init_data": init_data, "analysis_id": "ali-missing"},
+    )
+    assert response.status_code == 404
