@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from html import escape
 
-from fastapi import HTTPException
+from fastapi import HTTPException\n\nimport phonenumbers\nfrom phonenumbers.phonenumberutil import NumberParseException
 
 try:
     from twilio.jwt.access_token import AccessToken
@@ -19,6 +19,16 @@ try:
 except ImportError:  # pragma: no cover
     AccessToken = None
     VoiceGrant = None
+
+
+def normalize_e164(value: str) -> str:
+    try:
+        parsed = phonenumbers.parse(value.strip(), None)
+    except NumberParseException as exc:
+        raise CommunicationError("تعذر فهم رقم الهاتف.") from exc
+    if not phonenumbers.is_possible_number(parsed) or not phonenumbers.is_valid_number(parsed):
+        raise CommunicationError("رقم الهاتف غير صالح.")
+    return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
 
 
 class CommunicationError(RuntimeError):
