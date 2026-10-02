@@ -1,5 +1,6 @@
 import asyncio
 import re
+from datetime import UTC, datetime
 
 import phonenumbers
 from phonenumbers import carrier, geocoder, number_type, timezone
@@ -32,6 +33,19 @@ def _clean(value: str) -> str:
     return cleaned
 
 
+def _evidence_item(field: str, value: object, confidence: str, note: str | None = None) -> dict[str, object]:
+    item: dict[str, object] = {
+        "field": field,
+        "value": value,
+        "source": "Google libphonenumber metadata",
+        "confidence": confidence,
+        "kind": "public_metadata",
+    }
+    if note:
+        item["note"] = note
+    return item
+
+
 def _lookup_phone(value: str) -> dict[str, object]:
     cleaned = _clean(value)
     try:
@@ -42,45 +56,101 @@ def _lookup_phone(value: str) -> dict[str, object]:
     possible = phonenumbers.is_possible_number(parsed)
     valid = phonenumbers.is_valid_number(parsed)
     metadata_version = getattr(phonenumbers, "__version__", "unknown")
-    base = {
+    international = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+    e164 = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    national = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.NATIONAL)
+    line_type = _TYPE_NAMES.get(number_type(parsed), "غير معروف")
+    region_code = phonenumbers.region_code_for_number(parsed) or None
+    carrier_name = carrier.name_for_number(parsed, "en") or None
+    location = geocoder.description_for_number(parsed, "en") or None
+    country_name = geocoder.country_name_for_number(parsed, "en") or None
+    timezones = list(timezone.time_zones_for_number(parsed))
+
+    evidence_items = [
+        _evidence_item("validity", "valid" if valid else "not_valid", "high"),
+        _evidence_item("possibility", "possible" if possible else "not_possible", "high"),
+        _evidence_item("number_type", line_type, "high" if line_type != "غير معروف" else "low"),
+        _evidence_item("country", country_name or region_code, "high"),
+    ]
+    if location:
+        evidence_items.append(
+            _evidence_item(
+                "geographic_area",
+                location,
+                "medium",
+                "منطقة مرتبطة ببيانات الرقم وليست موقعًا حاليًا للجهاز.",
+            )
+        )
+    if carrier_name:
+        evidence_items.append(
+            _evidence_item(
+                "carrier",
+                carrier_name,
+                "medium",
+                "قد تمثل المعلومة تخصيص النطاق الأصلي ولا تعكس النقل بين المشغلين.",
+            )
+        )
+    if timezones:
+        evidence_items.append(
+            _evidence_item(
+                "timezones",
+                timezones,
+                "medium",
+                "مناطق زمنية محتملة مرتبطة بالرقم، وليست موقعًا حاليًا.",
+            )
+        )
+
+    base: dict[str, object] = {
         "ok": True,
         "type": "phone",
         "target": cleaned,
-        "international": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL),
-        "e164": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164),
+        "international": international,
+        "e164": e164,
+        "national": national,
         "country_code": parsed.country_code,
-        "region_code": phonenumbers.region_code_for_number(parsed) or None,
+        "region_code": region_code,
+        "country_name": country_name or None,
         "valid": valid,
         "possible": possible,
-        "line_type": _TYPE_NAMES.get(number_type(parsed), "غير معروف"),
-        "carrier": carrier.name_for_number(parsed, "en") or None,
-        "location": geocoder.description_for_number(parsed, "en") or None,
-        "timezones": list(timezone.time_zones_for_number(parsed)),
+        "line_type": line_type,
+        "carrier": carrier_name,
+        "location": location,
+        "timezones": timezones,
         "source": "Google libphonenumber metadata",
+        "checked_at": datetime.now(UTC).isoformat(),
+        "analysis": {
+            "status": "verified_public_metadata" if valid else "partial_public_metadata",
+            "overall_confidence": "high" if valid else "medium",
+            "evidence_count": len(evidence_items),
+        },
         "evidence": {
             "source": "Google libphonenumber metadata",
             "metadata_version": metadata_version,
             "scope": "public numbering-plan metadata",
+            "items": evidence_items,
             "limitations": [
                 "لا يثبت أن الرقم نشط حاليًا.",
                 "معلومات شركة الاتصالات قد تمثل تخصيص النطاق الأصلي، لا المشغل الحالي.",
+                "الموقع والمنطقة الزمنية إشارات مرتبطة ببيانات الرقم وليست تحديدًا لموقع الجهاز.",
                 "لا يتضمن اسم صاحب الرقم أو عنوانه أو حساباته الخاصة.",
             ],
         },
     }
+
     if not possible:
         raise ValueError("الرقم غير صالح من ناحية البنية.")
+
     if not valid:
         return {
             **base,
             "message": "تم التعرف على بنية الرقم، لكنه لا يطابق رقمًا صالحًا وفق بيانات الترقيم الحالية.",
         }
+
     return {
         **base,
-        "national": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.NATIONAL),
         "message": (
-            "النتيجة مبنية على بيانات الترقيم العامة. اسم صاحب الرقم أو عنوانه أو حساباته "
-            "لا يمكن استنتاجها من الرقم وحده."
+            "النتيجة مبنية على بيانات الترقيم العامة. لا يمكن استنتاج هوية صاحب الرقم "
+            "أو نشاطه الحالي من الرقم وحده."
         ),
     }
 
