@@ -410,8 +410,7 @@ function App() {
       `Source: ${result.evidence?.source ?? result.source ?? "—"}`,
       `Metadata: ${result.evidence?.metadata_version ?? "—"}`,
       `Checked: ${result.checked_at ?? "—"}`,
-    ].filter(Boolean).join("
-");
+    ].filter(Boolean).join("\n");
 
     try {
       await navigator.clipboard.writeText(lines);
