@@ -1,11 +1,11 @@
 from collections import defaultdict, deque
 from datetime import UTC, datetime
-from time import monotonic
 import urllib.parse
+from time import monotonic
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
 from ..ai import (
@@ -17,6 +17,16 @@ from ..ai import (
 from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import create_session_token, validate_session_token, validate_telegram_init_data
+from .communications import (
+    CommunicationError,
+    LocationStore,
+    build_location_page,
+    create_voice_token,
+    normalize_e164,
+    send_sms,
+    validate_coordinates,
+    validate_twilio_signature,
+)
 from .phone import lookup_phone
 
 
