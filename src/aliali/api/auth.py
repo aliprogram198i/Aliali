@@ -1,8 +1,8 @@
+import base64
 import hashlib
 import hmac
 import json
 import time
-import base64
 from urllib.parse import parse_qsl
 
 from ..core.errors import ErrorCode, SecurityError
