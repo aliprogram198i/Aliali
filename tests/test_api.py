@@ -34,34 +34,25 @@ def _init_data(user: dict[str, object]) -> str:
     return urlencode(values)
 
 
-def test_dashboard_requires_valid_telegram_init_data() -> None:
+def test_lookup_requires_valid_telegram_init_data() -> None:
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
     response = client.post(
-        "/api/v1/dashboard",
-        json={"init_data": "auth_date=1&hash=invalid"},
+        "/api/v1/lookup",
+        json={"init_data": "auth_date=1&hash=invalid", "target": "+33142345678"},
     )
     assert response.status_code == 401
 
 
-def test_dashboard_returns_real_module_catalog_without_fake_metrics() -> None:
+def test_lookup_returns_phone_metadata_for_authenticated_user() -> None:
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
     response = client.post(
-        "/api/v1/dashboard",
-        json={"init_data": _init_data({"id": 42, "first_name": "Ali"})},
+        "/api/v1/lookup",
+        json={"init_data": _init_data({"id": 42, "first_name": "Ali"}), "target": "+33142345678"},
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["status"] == "operational"
-    assert payload["data_source"] == "module_registry"
-    assert payload["metrics"] == {
-        "assets": None,
-        "changes": None,
-        "evidence": None,
-    }
-    assert payload["module_summary"]["total_enabled"] == len(payload["modules"])
-    assert payload["module_summary"]["categories"] == sorted(
-        {module["category"] for module in payload["modules"]}
-    )
-    assert payload["modules"]
-    assert all(module["enabled"] for module in payload["modules"])
+    assert payload["type"] == "phone"
+    assert payload["valid"] is True
+    assert payload["country_code"] == 33
+    assert payload["e164"] == "+33142345678"
