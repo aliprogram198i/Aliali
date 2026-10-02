@@ -87,7 +87,7 @@ def check_social_presence(phone_e164: str | None = None) -> list[dict[str, objec
     for provider in _PROVIDERS:
         try:
             results.append(_serialize(provider.check(phone)))
-        except Exception:
+        except Exception:  # noqa: BLE001 - isolate third-party provider failures
             results.append(
                 _serialize(
                     SocialResult(
