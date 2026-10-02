@@ -483,10 +483,31 @@ function App() {
                 <div className="source-row"><span>قراءة الأدلة</span><strong>{aiResult.analysis.evidence_interpretation}</strong></div>
                 <div className="source-row"><span>التحذيرات</span><strong>{(aiResult.analysis.cautions ?? []).join(" · ")}</strong></div>
                 <div className="source-row"><span>الخطوات التالية</span><strong>{(aiResult.analysis.next_steps ?? []).join(" · ")}</strong></div>
-                <div className="source-row"><span>التحقق</span><strong>{aiResult.verification?.verified ? "✓ اجتاز التحقق" : "—"}</strong></div>
+                <div className="source-row"><span>التحقق</span><strong>{aiResult.verification?.verified ? "✓ اجتاز التحقق" : "✕ مرفوض"}</strong></div>
                 <div className="source-row"><span>مخاطر التحليل</span><strong>{aiResult.verification?.risk ?? "—"}</strong></div>
                 <div className="source-row"><span>المزود / النموذج</span><strong>{aiResult.provider ?? "محرك حتمي"} / {aiResult.model ?? "—"}</strong></div>
               </div>
+            ) : null}
+
+            {aiResult?.analysis?.claims?.length ? (
+              <>
+                <div className="section-title">🔗 خريطة الدليل ← الاستنتاج</div>
+                <div className="evidence-list">
+                  {aiResult.analysis.claims.map((claim, index) => (
+                    <article className="evidence-item" key={claim.claim ?? index}>
+                      <div>
+                        <strong>{claim.claim ?? "استنتاج غير مسمى"}</strong>
+                        <span>الأدلة الداعمة: {(claim.support ?? []).join(", ") || "لا يوجد"}</span>
+                      </div>
+                      <div className="evidence-value">
+                        <b>{claim.confidence ?? "unknown"}</b>
+                        <em>{(claim.support ?? []).length ? "مدعوم" : "غير مدعوم"}</em>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : null}
             ) : null}
 
             <div className="section-title">📌 ما نعرفه وما لا نعرفه</div>
