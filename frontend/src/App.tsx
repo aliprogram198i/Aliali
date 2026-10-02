@@ -31,6 +31,17 @@ type Identity = {
   note?: string | null;
 };
 
+type SocialEvidenceLedgerEntry = {
+  provider_id: string;
+  status: string;
+  verification?: string | null;
+  source?: string | null;
+  checked_at?: string | null;
+  evidence?: unknown;
+  method?: string | null;
+  note?: string | null;
+};
+
 type SocialApp = {
   id: string;
   name: string;
@@ -87,6 +98,7 @@ type LookupResult = {
   identity?: Identity | null;
   current_location?: CurrentLocation | null;
   social_apps?: SocialApp[] | null;
+  social_evidence_ledger?: SocialEvidenceLedgerEntry[] | null;
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
@@ -405,6 +417,22 @@ function App() {
               <div className="source-row"><span>إصدار metadata</span><strong>{result.evidence?.metadata_version}</strong></div>
               <div className="source-row"><span>نطاق البيانات</span><strong>{result.evidence?.scope}</strong></div>
               <div className="source-row"><span>عدد الأدلة</span><strong>{result.analysis?.evidence_count ?? result.evidence?.items?.length ?? 0}</strong></div>
+            </div>
+
+            <div className="section-title">🧾 سجل أدلة التحقق الاجتماعي</div>
+            <div className="evidence-list">
+              {(result.social_evidence_ledger ?? []).map((entry) => (
+                <article className="evidence-item" key={entry.provider_id}>
+                  <div>
+                    <strong>{entry.provider_id}</strong>
+                    <span>{entry.method ?? "—"} · {entry.note ?? "—"}</span>
+                  </div>
+                  <div className="evidence-value">
+                    <b>{entry.verification === "verified" ? "موثق" : "غير موثق"}</b>
+                    <em>{entry.source ?? "لا يوجد مصدر"}</em>
+                  </div>
+                </article>
+              ))}
             </div>
 
             <div className="section-title">🧩 مصفوفة الأدلة والتحقق</div>

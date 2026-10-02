@@ -1,5 +1,12 @@
 from aliali.api.phone import _lookup_phone
-from aliali.api.social import SocialResult, check_social_presence
+from aliali.api.social import (
+    EvidenceLedger,
+    ProviderRegistration,
+    SocialProviderRegistry,
+    SocialResult,
+    check_social_presence,
+    check_social_presence_with_ledger,
+)
 
 
 def test_social_results_never_claim_presence_without_authorized_evidence() -> None:
@@ -29,7 +36,17 @@ def test_social_adapter_failure_is_isolated(monkeypatch) -> None:
         def check(self, phone_e164: str) -> SocialResult:
             raise RuntimeError("simulated provider failure")
 
-    monkeypatch.setattr(social, "_PROVIDERS", (BrokenProvider(), *social._PROVIDERS))
+    existing = social.PROVIDER_REGISTRY.all()
+    monkeypatch.setattr(
+        social,
+        "PROVIDER_REGISTRY",
+        SocialProviderRegistry(
+            (
+                ProviderRegistration(BrokenProvider(), enabled=True),
+                *existing,
+            )
+        ),
+    )
     results = check_social_presence("+33142345678")
     assert results[0]["status"] == "provider_unavailable"
     assert "عزل الخطأ" in results[0]["note"]
@@ -37,6 +54,70 @@ def test_social_adapter_failure_is_isolated(monkeypatch) -> None:
 
 
 def test_social_adapter_boundary_accepts_normalized_number_without_storing_it() -> None:
-    results = check_social_presence("+33142345678")
+    results, ledger = check_social_presence_with_ledger("+33142345678")
     assert all(item["source"] is None for item in results)
     assert all(item["evidence"] is None for item in results)
+    assert all("phone" not in entry for entry in ledger)
+
+
+def test_evidence_ledger_records_only_result_evidence() -> None:
+    ledger = EvidenceLedger()
+    result = SocialResult(
+        id="example",
+        name="Example",
+        status="verified_present",
+        verification="verified",
+        source="authorized_provider",
+        checked_at="2026-10-02T00:00:00+00:00",
+        evidence={"proof": "provider-confirmed"},
+        method="authorized_provider",
+        note="verified by authorized evidence",
+    )
+    ledger.record(result)
+    assert ledger.as_dicts() == [
+        {
+            "provider_id": "example",
+            "status": "verified_present",
+            "verification": "verified",
+            "source": "authorized_provider",
+            "checked_at": "2026-10-02T00:00:00+00:00",
+            "evidence": {"proof": "provider-confirmed"},
+            "method": "authorized_provider",
+            "note": "verified by authorized evidence",
+        }
+    ]
+
+
+def test_provider_registry_rejects_duplicate_ids_and_invalid_policy() -> None:
+    class Provider:
+        id = "example"
+        name = "Example"
+        method = "authorized_provider"
+
+        def check(self, phone_e164: str) -> SocialResult:
+            raise AssertionError("not called")
+
+    registry = SocialProviderRegistry()
+    registration = ProviderRegistration(Provider())
+    registry.register(registration)
+
+    try:
+        registry.register(registration)
+    except ValueError as exc:
+        assert "Duplicate provider id" in str(exc)
+    else:
+        raise AssertionError("duplicate provider id must fail")
+
+    for timeout, rate in ((0, 30), (5, 0)):
+        invalid = ProviderRegistration(
+            Provider(),
+            timeout_seconds=timeout,
+            max_calls_per_minute=rate,
+        )
+        isolated = SocialProviderRegistry()
+        try:
+            isolated.register(invalid)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid provider policy must fail")

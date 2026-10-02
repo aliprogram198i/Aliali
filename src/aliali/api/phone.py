@@ -7,7 +7,7 @@ from phonenumbers import carrier, geocoder, number_type, timezone
 from phonenumbers.phonenumberutil import NumberParseException
 
 from .intelligence import build_intelligence
-from .social import check_social_presence
+from .social import PROVIDER_REGISTRY, check_social_presence_with_ledger
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 _PHONE_RE = re.compile(r"^[+0-9().\-\s]{6,32}$")
@@ -122,7 +122,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
 
     checked_at = datetime.now(UTC).isoformat()
     source_name = "Google libphonenumber metadata"
-    social_apps = check_social_presence(e164)
+    social_apps, social_evidence_ledger = check_social_presence_with_ledger(e164)
 
     intelligence = build_intelligence(
         checked_at=checked_at,
@@ -157,6 +157,8 @@ def _lookup_phone(value: str) -> dict[str, object]:
         "identity": identity,
         "current_location": current_location,
         "social_apps": social_apps,
+        "social_evidence_ledger": social_evidence_ledger,
+        "social_provider_registry": PROVIDER_REGISTRY.policy(),
         "analysis": {
             "status": "verified_public_metadata" if valid else "partial_public_metadata",
             "overall_confidence": "high" if valid else "medium",
