@@ -203,23 +203,30 @@ def _fallback_result(provider: SocialProviderAdapter, note: str) -> SocialResult
     )
 
 
-def check_social_presence(
+def check_social_presence_with_ledger(
     phone_e164: str | None = None,
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
-    """Run registered adapters and return both user results and request-scoped evidence."""
+    """Run registered adapters and return user results plus request-scoped evidence."""
     phone = phone_e164 or ""
     results: list[dict[str, object]] = []
     ledger = EvidenceLedger()
 
     for registration in _REGISTRY.all():
         provider = registration.adapter
-        if not registration.enabled:
+        try:
             result = provider.check(phone)
-        else:
-            # Real providers are deliberately disabled until an authorized integration
-            # is configured. Enabled adapters must implement their own bounded client.
-            result = provider.check(phone)
+        except Exception:  # noqa: BLE001 - isolate provider failures
+            result = _fallback_result(
+                provider,
+                "تعذر تشغيل مزود التحقق؛ تم عزل الخطأ ولم تتأثر بقية النتائج.",
+            )
         ledger.record(result)
         results.append(_serialize(result))
 
     return results, ledger.as_dicts()
+
+
+def check_social_presence(phone_e164: str | None = None) -> list[dict[str, object]]:
+    """Compatibility API returning only social verification results."""
+    results, _ledger = check_social_presence_with_ledger(phone_e164)
+    return results
