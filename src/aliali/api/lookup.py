@@ -24,7 +24,7 @@ def _fetch_json(url: str) -> dict[str, object]:
     except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
         raise LookupError("تعذر الوصول إلى خدمة البحث على الإنترنت.") from exc
     if not isinstance(payload, dict):
-        raise LookupError("خدمة البحث أعادت استجابة غير صالحة.")
+        raise TypeError("خدمة البحث أعادت استجابة غير صالحة.")
     return payload
 
 
