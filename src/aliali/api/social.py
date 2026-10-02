@@ -154,7 +154,7 @@ class UnavailableProvider:
         )
 
 
-_REGISTRY = SocialProviderRegistry(
+PROVIDER_REGISTRY = SocialProviderRegistry(
     tuple(
         ProviderRegistration(
             UnavailableProvider(provider_id, name, method),
@@ -205,7 +205,7 @@ def check_social_presence_with_ledger(
     results: list[dict[str, object]] = []
     ledger = EvidenceLedger()
 
-    for registration in _REGISTRY.all():
+    for registration in PROVIDER_REGISTRY.all():
         provider = registration.adapter
         try:
             result = provider.check(phone)
