@@ -126,7 +126,7 @@ def test_ai_audit_is_non_sensitive_and_authenticated() -> None:
         json={"init_data": init_data, "analysis_id": analysis_id},
     )
     assert response.status_code == 200
-    audit = client.get("/api/v1/ai-audit", params={"init_data": init_data})
+    audit = client.post("/api/v1/ai-audit", json={"init_data": init_data})
     assert audit.status_code == 200
     body = audit.json()
     encoded = json.dumps(body, ensure_ascii=False)
