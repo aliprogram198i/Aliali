@@ -6,6 +6,7 @@ from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import validate_telegram_init_data
 from .lookup import lookup_target
+from .phone import lookup_phone
 
 
 class SessionRequest(BaseModel):
@@ -23,9 +24,19 @@ def _authenticate(init_data: str, settings: Settings) -> dict[str, object]:
         raise HTTPException(status_code=401, detail=exc.message) from exc
 
 
+def _looks_like_phone(value: str) -> bool:
+    normalized = value.strip().translate(str.maketrans(
+        "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789"
+    ))
+    compact = normalized.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    return normalized.startswith("+") and compact[1:].isdigit() if normalized.startswith("+") else (
+        compact.isdigit() and 6 <= len(compact) <= 15
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or Settings()
-    app = FastAPI(title="Aliali Network Lookup", version="1.0.0")
+    app = FastAPI(title="Aliali Reverse Lookup", version="2.0.0")
 
     origins = [resolved_settings.mini_app_url] if resolved_settings.mini_app_url else []
     if origins:
@@ -61,8 +72,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
         _authenticate(init_data, resolved_settings)
-
         try:
+            if _looks_like_phone(request.target):
+                return await lookup_phone(request.target)
             return await lookup_target(request.target)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
