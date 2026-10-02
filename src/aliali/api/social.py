@@ -169,12 +169,6 @@ _REGISTRY = SocialProviderRegistry(
     )
 )
 
-# Compatibility view for tests/integrations that inspect the provider collection.
-_PROVIDERS: tuple[SocialProviderAdapter, ...] = tuple(
-    registration.adapter for registration in _REGISTRY.all()
-)
-
-
 def _serialize(result: SocialResult) -> dict[str, object]:
     return {
         "id": result.id,
