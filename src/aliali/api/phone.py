@@ -46,6 +46,32 @@ def _evidence_item(field: str, value: object, confidence: str, note: str | None 
     return item
 
 
+def _social_apps() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "whatsapp",
+            "name": "WhatsApp",
+            "status": "number_contact_supported",
+            "verification": "not_verified",
+            "note": "يدعم التواصل عبر رقم الهاتف؛ وجود حساب لهذا الرقم لا يُثبت من بيانات الترقيم وحدها.",
+        },
+        {
+            "id": "telegram",
+            "name": "Telegram",
+            "status": "privacy_dependent",
+            "verification": "not_verified",
+            "note": "العثور على الحساب عبر الرقم يعتمد على إعدادات الخصوصية ووجود الرقم في جهات الاتصال المسموح بها.",
+        },
+        {
+            "id": "other",
+            "name": "تطبيقات اجتماعية أخرى",
+            "status": "not_verifiable_from_number",
+            "verification": "not_supported",
+            "note": "لا يتم الادعاء بوجود حسابات على التطبيقات الأخرى دون مصدر عام أو تكامل موثوق خاص بالتطبيق.",
+        },
+    ]
+
+
 def _lookup_phone(value: str) -> dict[str, object]:
     cleaned = _clean(value)
     try:
