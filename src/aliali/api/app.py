@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from ..ai import analyze_with_openai
 from ..config import Settings
 from ..core.errors import SecurityError
-from .auth import validate_telegram_init_data
+from .auth import create_session_token, validate_session_token, validate_telegram_init_data
 from .phone import lookup_phone
 
 
@@ -46,6 +46,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     rate_limit = 20
     window_seconds = 60.0
 
+    def authenticate_request(init_data: str, session_token: str | None) -> dict[str, object]:
+        if session_token:
+            try:
+                session = validate_session_token(session_token, resolved_settings.bot_token)
+                return {"user": {"id": session["user_id"]}, "auth_date": None}
+            except SecurityError:
+                pass
+        return _authenticate(init_data, resolved_settings)
+
     def enforce_rate_limit(user_id: object) -> None:
         now = monotonic()
         key = str(user_id)
@@ -68,13 +77,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def create_session(
         request: SessionRequest,
         x_telegram_init_data: str | None = Header(default=None),
+        x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        identity = _authenticate(init_data, resolved_settings)
+        identity = authenticate_request(init_data, x_aliali_session)
         return {
             "authenticated": True,
             "user": identity["user"],
             "auth_date": identity["auth_date"],
+            "session_token": create_session_token(identity, resolved_settings.bot_token),
+            "session_ttl_seconds": 21600,
         }
 
     @app.post("/api/v1/ai-analysis")
