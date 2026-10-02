@@ -508,7 +508,6 @@ function App() {
                 </div>
               </>
             ) : null}
-            ) : null}
 
             <div className="section-title">📌 ما نعرفه وما لا نعرفه</div>
             <div className="known-unknown">
