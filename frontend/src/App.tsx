@@ -81,6 +81,7 @@ type LookupResult = {
   ok: boolean;
   type: "phone";
   target: string;
+  analysis_id?: string | null;
   international?: string | null;
   e164?: string | null;
   national?: string | null;
@@ -145,7 +146,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiResult, setAiResult] = useState<{ status?: string; provider?: string | null; model?: string | null; message?: string; analysis?: { summary?: string; evidence_interpretation?: string; cautions?: string[]; next_steps?: string[] } } | null>(null);
+  const [aiResult, setAiResult] = useState<{ status?: string; provider?: string | null; model?: string | null; message?: string; analysis?: { summary?: string; evidence_interpretation?: string; cautions?: string[]; next_steps?: string[]; claims?: Array<{ claim?: string; support?: string[]; confidence?: string }> }; verification?: { verified?: boolean; risk?: string; message?: string } } | null>(null);
   const webApp = window.Telegram?.WebApp;
 
   useEffect(() => {
