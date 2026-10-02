@@ -357,10 +357,9 @@ function App() {
 
             <nav className="result-nav" aria-label="أقسام نتيجة التحليل">
               <a href="#overview">الخلاصة</a>
-              <a href="#identity">الهوية والموقع</a>
+              <a href="#identity">الهوية</a>
               <a href="#social">التواصل</a>
-              <a href="#facts">خصائص الرقم</a>
-              <a href="#evidence">الأدلة</a>
+              <a href="#facts">الرقم</a>
               <a href="#analysis">التحليل</a>
             </nav>
 
@@ -379,6 +378,15 @@ function App() {
                 <StatusPill ok={Boolean(result.valid)} label={result.valid ? "رقم صالح وفق metadata" : "غير صالح وفق metadata"} />
                 <StatusPill ok={Boolean(result.possible)} label={result.possible ? "البنية ممكنة" : "البنية غير ممكنة"} />
               </div>
+            </div>
+
+            <div className="result-actions">
+              <button type="button" className="secondary-action" onClick={() => { setResult(null); setAiResult(null); setError(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                ↻ بحث جديد
+              </button>
+              <button type="button" className="secondary-action" onClick={() => navigator.clipboard.writeText(result.international ?? result.target)}>
+                ⧉ نسخ الرقم
+              </button>
             </div>
 
             <div id="identity" className="section-title">👤 هوية صاحب الرقم</div>
@@ -466,72 +474,80 @@ function App() {
               <Field label="شركة الاتصالات" value={result.carrier} />
             </div>
 
-            <div id="evidence" className="section-title">🔐 الأدلة التي بُنيت عليها النتيجة</div>
-            <div className="evidence-list">
-              {[...(result.evidence?.items ?? [])].sort((a, b) => evidencePriority(b) - evidencePriority(a) || a.field.localeCompare(b.field)).map((item) => (
-                <article className="evidence-item" key={item.field}>
-                  <div>
-                    <strong>{item.field}</strong>
-                    <span>{item.note ?? "بيانات ترقيم عامة"}</span>
-                  </div>
-                  <div className="evidence-value">
-                    <b>{Array.isArray(item.value) ? item.value.join(", ") : String(item.value)}</b>
-                    <em className={`confidence-${item.confidence}`}>{confidenceLabel[item.confidence]}</em>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <details className="advanced-panel">
+              <summary>
+                <span><b>🔐 الأدلة والتفاصيل المتقدمة</b><small>المصادر، الاتساق، وسجل التحقق</small></span>
+                <strong>عرض التفاصيل</strong>
+              </summary>
+              <div id="evidence" className="section-title">🔐 الأدلة التي بُنيت عليها النتيجة</div>
+              <div className="evidence-list">
+                {[...(result.evidence?.items ?? [])].sort((a, b) => evidencePriority(b) - evidencePriority(a) || a.field.localeCompare(b.field)).map((item) => (
+                  <article className="evidence-item" key={item.field}>
+                    <div>
+                      <strong>{item.field}</strong>
+                      <span>{item.note ?? "بيانات ترقيم عامة"}</span>
+                    </div>
+                    <div className="evidence-value">
+                      <b>{Array.isArray(item.value) ? item.value.join(", ") : String(item.value)}</b>
+                      <em className={`confidence-${item.confidence}`}>{confidenceLabel[item.confidence]}</em>
+                    </div>
+                  </article>
+                ))}
+              </div>
 
-            <div className="source-card">
-              <div className="source-row"><span>المصدر</span><strong>{result.evidence?.source ?? result.source}</strong></div>
-              <div className="source-row"><span>إصدار metadata</span><strong>{result.evidence?.metadata_version}</strong></div>
-              <div className="source-row"><span>نطاق البيانات</span><strong>{result.evidence?.scope}</strong></div>
-              <div className="source-row"><span>عدد الأدلة</span><strong>{result.analysis?.evidence_count ?? result.evidence?.items?.length ?? 0}</strong></div>
-            </div>
+              <div className="source-card">
+                <div className="source-row"><span>المصدر</span><strong>{result.evidence?.source ?? result.source}</strong></div>
+                <div className="source-row"><span>إصدار metadata</span><strong>{result.evidence?.metadata_version}</strong></div>
+                <div className="source-row"><span>نطاق البيانات</span><strong>{result.evidence?.scope}</strong></div>
+                <div className="source-row"><span>عدد الأدلة</span><strong>{result.analysis?.evidence_count ?? result.evidence?.items?.length ?? 0}</strong></div>
+              </div>
 
-            <div className="section-title">🧾 سجل أدلة التحقق الاجتماعي</div>
-            <div className="evidence-list">
-              {(result.social_evidence_ledger ?? []).map((entry) => (
-                <article className="evidence-item" key={entry.provider_id}>
-                  <div>
-                    <strong>{entry.provider_id}</strong>
-                    <span>{entry.method ?? "—"} · {entry.note ?? "—"}</span>
-                  </div>
-                  <div className="evidence-value">
-                    <b>{entry.verification === "verified" ? "موثق" : "غير موثق"}</b>
-                    <em>{entry.source ?? "لا يوجد مصدر"}</em>
-                  </div>
-                </article>
-              ))}
-            </div>
+              <div className="section-title">🧾 سجل أدلة التحقق الاجتماعي</div>
+              <div className="evidence-list">
+                {(result.social_evidence_ledger ?? []).map((entry) => (
+                  <article className="evidence-item" key={entry.provider_id}>
+                    <div>
+                      <strong>{entry.provider_id}</strong>
+                      <span>{entry.method ?? "—"} · {entry.note ?? "—"}</span>
+                    </div>
+                    <div className="evidence-value">
+                      <b>{entry.verification === "verified" ? "موثق" : "غير موثق"}</b>
+                      <em>{entry.source ?? "لا يوجد مصدر"}</em>
+                    </div>
+                  </article>
+                ))}
+              </div>
 
-            <div className="section-title">🧩 مصفوفة الأدلة والتحقق</div>
-            <div className="source-card">
-              <div className="source-row"><span>الأدلة المؤكدة</span><strong>{result.coverage?.confirmed ?? 0}</strong></div>
-              <div className="source-row"><span>الأدلة المدعومة</span><strong>{result.coverage?.supported ?? 0}</strong></div>
-              <div className="source-row"><span>المعلومات غير المعروفة</span><strong>{result.coverage?.unknown ?? 0}</strong></div>
-              <div className="source-row"><span>طريقة التقييم</span><strong>{result.coverage?.method ?? "—"}</strong></div>
-            </div>
+              <div className="section-title">🧩 مصفوفة الأدلة والتحقق</div>
+              <div className="source-card">
+                <div className="source-row"><span>الأدلة المؤكدة</span><strong>{result.coverage?.confirmed ?? 0}</strong></div>
+                <div className="source-row"><span>الأدلة المدعومة</span><strong>{result.coverage?.supported ?? 0}</strong></div>
+                <div className="source-row"><span>المعلومات غير المعروفة</span><strong>{result.coverage?.unknown ?? 0}</strong></div>
+                <div className="source-row"><span>طريقة التقييم</span><strong>{result.coverage?.method ?? "—"}</strong></div>
+              </div>
 
-            <div className="section-title">⚖️ فحص الاتساق والتعارضات</div>
-            <div className="evidence-list">
-              {[...(result.consistency_checks ?? [])].sort((a, b) => checkPriority(b.status) - checkPriority(a.status)).map((check) => (
-                <article className="evidence-item" key={check.id}>
-                  <div><strong>{check.label}</strong><span>{check.details}</span></div>
-                  <div className="evidence-value"><b>{check.status}</b></div>
-                </article>
-              ))}
-            </div>
+              <div className="section-title">⚖️ فحص الاتساق والتعارضات</div>
+              <div className="evidence-list">
+                {[...(result.consistency_checks ?? [])].sort((a, b) => checkPriority(b.status) - checkPriority(a.status)).map((check) => (
+                  <article className="evidence-item" key={check.id}>
+                    <div><strong>{check.label}</strong><span>{check.details}</span></div>
+                    <div className="evidence-value"><b>{check.status}</b></div>
+                  </article>
+                ))}
+              </div>
 
-            <div className="section-title">🗂️ سجل المصادر</div>
-            <div className="evidence-list">
-              {[...(result.source_registry ?? [])].sort((a, b) => (a.status === "available" ? 1 : 0) - (b.status === "available" ? 1 : 0)).reverse().map((source) => (
-                <article className="evidence-item" key={source.id}>
-                  <div><strong>{source.name}</strong><span>{source.type} · {source.status}</span></div>
-                  <div className="evidence-value"><b>{source.retrieved_at ? new Date(source.retrieved_at).toLocaleString("ar") : "—"}</b></div>
-                </article>
-              ))}
-            </div>
+              <div className="section-title">🗂️ سجل المصادر</div>
+              <div className="evidence-list">
+                {[...(result.source_registry ?? [])].sort((a, b) => (a.status === "available" ? 1 : 0) - (b.status === "available" ? 1 : 0)).reverse().map((source) => (
+                  <article className="evidence-item" key={source.id}>
+                    <div><strong>{source.name}</strong><span>{source.type} · {source.status}</span></div>
+                    <div className="evidence-value"><b>{source.retrieved_at ? new Date(source.retrieved_at).toLocaleString("ar") : "—"}</b></div>
+                  </article>
+                ))}
+              </div>
+
+
+            </details>
 
             <div id="analysis" className="section-title">🤖 طبقة التحليل الذكي</div>
             <div className="identity-note">
