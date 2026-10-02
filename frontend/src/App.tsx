@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";\nimport { Call, Device } from "@twilio/voice-sdk";
+import { useEffect, useRef, useState } from "react";
+import { Call, Device } from "@twilio/voice-sdk";
 
 type EvidenceItem = {
   field: string;
@@ -409,7 +410,8 @@ function App() {
       `Source: ${result.evidence?.source ?? result.source ?? "—"}`,
       `Metadata: ${result.evidence?.metadata_version ?? "—"}`,
       `Checked: ${result.checked_at ?? "—"}`,
-    ].filter(Boolean).join("\n");
+    ].filter(Boolean).join("
+");
 
     try {
       await navigator.clipboard.writeText(lines);
