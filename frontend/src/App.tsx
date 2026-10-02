@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";\nimport { Device } from "@twilio/voice-sdk";
+import { useEffect, useRef, useState } from "react";\nimport { Call, Device } from "@twilio/voice-sdk";
 
 type EvidenceItem = {
   field: string;
@@ -194,7 +194,7 @@ function App() {
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState("جاهز للاتصال");
   const voiceDeviceRef = useRef<Device | null>(null);
-  const voiceCallRef = useRef<ReturnType<Device["connect"]> | null>(null);
+  const voiceCallRef = useRef<Call | null>(null);
   const [locationBusy, setLocationBusy] = useState(false);
   const [locationRequestId, setLocationRequestId] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus | null>(null);
