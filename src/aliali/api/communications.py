@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import secrets
 import sqlite3
 import threading
-from pathlib import Path
 import urllib.parse
 import urllib.request
 import uuid
 from datetime import UTC, datetime, timedelta
 from html import escape
+from pathlib import Path
 
 from fastapi import HTTPException
 
