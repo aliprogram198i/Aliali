@@ -42,6 +42,20 @@ class AIAnalysisRequest(SessionRequest):
     analysis_id: str
 
 
+class CommunicationRequest(SessionRequest):
+    target: str
+
+
+class LocationRequest(SessionRequest):
+    target: str
+
+
+class LocationPayload(BaseModel):
+    latitude: float
+    longitude: float
+    accuracy_m: float | None = None
+
+
 def _authenticate(init_data: str, settings: Settings) -> dict[str, object]:
     try:
         return validate_telegram_init_data(init_data, settings.bot_token)
