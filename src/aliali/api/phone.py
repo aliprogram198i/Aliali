@@ -137,6 +137,12 @@ def _lookup_phone(value: str) -> dict[str, object]:
         "checked_at": datetime.now(UTC).isoformat(),
         "identity": identity,
         "current_location": current_location,
+        "social_apps": [
+            {"id": "whatsapp", "name": "WhatsApp", "status": "number_contact_supported", "verification": "not_verified", "note": "يدعم التواصل بالرقم؛ وجود حساب نشط لا يُثبت من بيانات الترقيم وحدها."},
+            {"id": "telegram", "name": "Telegram", "status": "privacy_dependent", "verification": "not_verified", "note": "العثور عبر الرقم يعتمد على إعدادات الخصوصية في Telegram."},
+            {"id": "signal", "name": "Signal", "status": "privacy_dependent", "verification": "not_verified", "note": "إمكانية العثور عبر الرقم تعتمد على إعدادات الخصوصية في Signal."},
+            {"id": "other", "name": "تطبيقات أخرى", "status": "not_verifiable_from_number", "verification": "not_supported", "note": "لا يتم ادعاء وجود حسابات دون مصدر عام موثوق ومسموح به."},
+        ],
         "analysis": {
             "status": "verified_public_metadata" if valid else "partial_public_metadata",
             "overall_confidence": "high" if valid else "medium",
