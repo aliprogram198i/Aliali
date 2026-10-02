@@ -1,4 +1,4 @@
-from aliali.api.location import resolve_phone_location
+from aliali.api.location import as_dict, resolve_phone_location
 
 
 def test_phone_area_is_explicitly_non_live():
@@ -24,4 +24,4 @@ def test_location_falls_back_to_phone_region():
         source="Google libphonenumber metadata",
     )
     assert result.precision == "PHONE_REGION"
-    assert result.coordinates is None if hasattr(result, "coordinates") else True
+    assert as_dict(result)["coordinates"] is None
