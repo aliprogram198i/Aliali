@@ -7,6 +7,8 @@ from phonenumbers import carrier, geocoder, number_type, timezone
 from phonenumbers.phonenumberutil import NumberParseException
 
 from .intelligence import build_intelligence
+from .identity import build_identity_registry, resolve_identity
+from ..config import Settings
 from .social import PROVIDER_REGISTRY, check_social_presence_with_ledger
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
@@ -49,7 +51,7 @@ def _evidence_item(field: str, value: object, confidence: str, note: str | None 
     return item
 
 
-def _lookup_phone(value: str) -> dict[str, object]:
+def _lookup_phone(value: str, settings: Settings | None = None) -> dict[str, object]:
     cleaned = _clean(value)
     try:
         parsed = phonenumbers.parse(cleaned, None)
@@ -103,13 +105,12 @@ def _lookup_phone(value: str) -> dict[str, object]:
             )
         )
 
-    identity = {
-        "status": "not_established",
-        "name": None,
-        "source": None,
-        "verified_at": None,
-        "note": "لا توجد هوية شخصية موثقة في مصدر عام أو مصرح به ضمن هذا البحث.",
-    }
+    resolved_settings = settings or Settings(bot_token="disabled")
+    identity_registry = build_identity_registry(
+        twilio_account_sid=resolved_settings.twilio_account_sid,
+        twilio_auth_token=resolved_settings.twilio_auth_token,
+    )
+    identity, identity_evidence_ledger = resolve_identity(e164, identity_registry)
     current_location = {
         "status": "not_available",
         "latitude": None,
@@ -134,6 +135,8 @@ def _lookup_phone(value: str) -> dict[str, object]:
         evidence_items=evidence_items,
         source=source_name,
         metadata_version=metadata_version,
+        identity_evidence_ledger=identity_evidence_ledger,
+        identity_provider_registry=identity_registry.policy(),
     )
 
     base: dict[str, object] = {
@@ -159,6 +162,8 @@ def _lookup_phone(value: str) -> dict[str, object]:
         "social_apps": social_apps,
         "social_evidence_ledger": social_evidence_ledger,
         "social_provider_registry": PROVIDER_REGISTRY.policy(),
+        "identity_provider_registry": identity_registry.policy(),
+        "identity_evidence_ledger": identity_evidence_ledger,
         "analysis": {
             "status": "verified_public_metadata" if valid else "partial_public_metadata",
             "overall_confidence": "high" if valid else "medium",
@@ -199,5 +204,5 @@ def _lookup_phone(value: str) -> dict[str, object]:
     }
 
 
-async def lookup_phone(value: str) -> dict[str, object]:
-    return await asyncio.to_thread(_lookup_phone, value)
+async def lookup_phone(value: str, settings: Settings | None = None) -> dict[str, object]:
+    return await asyncio.to_thread(_lookup_phone, value, settings)
