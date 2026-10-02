@@ -1,4 +1,5 @@
 from aliali.api.auth import create_session_token, validate_session_token
+from aliali.core.errors import SecurityError
 
 
 def test_session_token_round_trip() -> None:
@@ -14,7 +15,7 @@ def test_session_token_rejects_wrong_secret() -> None:
     token = create_session_token(identity, "bot-token", ttl_seconds=60)
     try:
         validate_session_token(token, "different-token")
-    except Exception as exc:
+    except SecurityError as exc:
         assert "signature" in str(exc).lower()
     else:
         raise AssertionError("session token must reject a different bot token")
