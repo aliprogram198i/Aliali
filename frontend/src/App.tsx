@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Device, type Call } from "@twilio/voice-sdk";
 
 type EvidenceItem = {
   field: string;
@@ -88,6 +89,16 @@ type Intelligence = {
   timeline?: Array<{ event?: string; label?: string; at?: string }>;
   ai_analysis?: { status?: string; provider?: string | null; model?: string | null; message?: string };
   generated_at?: string;
+};
+
+type LocationStatus = {
+  request_id?: string;
+  status?: "pending" | "located" | "expired";
+  expires_at?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy_m?: number | null;
+  located_at?: string | null;
 };
 
 type LookupResult = {
@@ -181,6 +192,13 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("جاهز للاتصال");
+  const voiceDeviceRef = useRef<Device | null>(null);
+  const voiceCallRef = useRef<Call | null>(null);
+  const [locationBusy, setLocationBusy] = useState(false);
+  const [locationRequestId, setLocationRequestId] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus | null>(null);
   const [aiResult, setAiResult] = useState<{ status?: string; provider?: string | null; model?: string | null; message?: string; analysis?: { summary?: string; evidence_interpretation?: string; cautions?: string[]; next_steps?: string[]; claims?: Array<{ claim?: string; support?: string[]; confidence?: string }> }; verification?: { verified?: boolean; risk?: string; message?: string } } | null>(null);
   const webApp = window.Telegram?.WebApp;
 
@@ -236,6 +254,120 @@ function App() {
       setBusy(false);
     }
   }
+
+  async function startVoiceCall() {
+    if (!result?.e164 || !API_BASE || !webApp?.initData) return;
+    setVoiceBusy(true);
+    setError("");
+    setVoiceStatus("جاري تهيئة الاتصال…");
+    try {
+      const response = await fetch(API_BASE + "/api/v1/voice/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
+        body: JSON.stringify({ init_data: webApp.initData }),
+      });
+      const payload = await response.json() as { token?: string; detail?: string };
+      if (!response.ok || !payload.token) throw new Error(payload.detail ?? "تعذر تهيئة الاتصال.");
+      const device = new Device(payload.token);
+      voiceDeviceRef.current = device;
+      device.on("error", (err) => {
+        setVoiceBusy(false);
+        setVoiceStatus("تعذر الاتصال");
+        setError(err.message || "حدث خطأ في الاتصال.");
+      });
+      const call = await device.connect({ params: { To: result.e164 } });
+      voiceCallRef.current = call;
+      setVoiceStatus("جاري الاتصال…");
+      call.on("ringing", () => setVoiceStatus("يرن الرقم المستهدف…"));
+      call.on("accept", () => setVoiceStatus("متصل الآن"));
+      call.on("disconnect", () => {
+        setVoiceBusy(false);
+        setVoiceStatus("انتهت المكالمة");
+        voiceCallRef.current = null;
+        voiceDeviceRef.current?.destroy();
+        voiceDeviceRef.current = null;
+      });
+      call.on("error", (err) => {
+        setVoiceBusy(false);
+        setVoiceStatus("تعذر الاتصال");
+        setError(err.message || "حدث خطأ في المكالمة.");
+      });
+    } catch (err) {
+      setVoiceBusy(false);
+      setVoiceStatus("تعذر الاتصال");
+      setError(err instanceof Error ? err.message : "تعذر الاتصال.");
+    }
+  }
+
+  function endVoiceCall() {
+    voiceCallRef.current?.disconnect();
+    voiceDeviceRef.current?.destroy();
+    voiceCallRef.current = null;
+    voiceDeviceRef.current = null;
+    setVoiceBusy(false);
+    setVoiceStatus("تم إنهاء الاتصال");
+  }
+
+  async function sendSms() {
+    if (!result?.e164 || !API_BASE || !webApp?.initData) return;
+    setError("");
+    try {
+      const response = await fetch(API_BASE + "/api/v1/contact/sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
+        body: JSON.stringify({ init_data: webApp.initData, target: result.e164 }),
+      });
+      const payload = await response.json() as { detail?: string };
+      if (!response.ok) throw new Error(payload.detail ?? "تعذر إرسال الرسالة.");
+      setError("✓ تم إرسال الرسالة من Aliali.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر إرسال الرسالة.");
+    }
+  }
+
+  async function requestLocation() {
+    if (!result?.e164 || !API_BASE || !webApp?.initData) return;
+    setLocationBusy(true);
+    setError("");
+    try {
+      const response = await fetch(API_BASE + "/api/v1/location/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
+        body: JSON.stringify({ init_data: webApp.initData, target: result.e164 }),
+      });
+      const payload = await response.json() as { request_id?: string; detail?: string };
+      if (!response.ok || !payload.request_id) throw new Error(payload.detail ?? "تعذر إنشاء طلب الموقع.");
+      setLocationRequestId(payload.request_id);
+      setLocationStatus({ request_id: payload.request_id, status: "pending" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر طلب مشاركة الموقع.");
+    } finally {
+      setLocationBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!locationRequestId || !API_BASE || !webApp?.initData) return;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const response = await fetch(API_BASE + "/api/v1/location/status/" + encodeURIComponent(locationRequestId), {
+          headers: { "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
+        });
+        if (!response.ok) return;
+        const payload = await response.json() as LocationStatus;
+        if (!stopped) setLocationStatus(payload);
+      } catch {
+        // transient polling failure; the next interval retries.
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 5000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [locationRequestId, sessionToken, webApp]);
 
   async function runAiAnalysis() {
     if (!result?.analysis_id || !API_BASE || !webApp?.initData) {
@@ -387,6 +519,51 @@ function App() {
               <button type="button" className="secondary-action" onClick={() => navigator.clipboard.writeText(result.international ?? result.target)}>
                 ⧉ نسخ الرقم
               </button>
+            </div>
+
+            <div className="communication-card">
+              <div className="communication-head">
+                <div>
+                  <strong>📞 التواصل من داخل Aliali</strong>
+                  <span>الاتصال الصوتي يعمل عبر الإنترنت وTwilio، ولا يفتح تطبيق الهاتف.</span>
+                </div>
+                <span className="communication-status">{voiceStatus}</span>
+              </div>
+              <div className="communication-actions">
+                {!voiceBusy ? (
+                  <button type="button" className="secondary-action" onClick={() => void startVoiceCall()}>
+                    📞 اتصال داخل التطبيق
+                  </button>
+                ) : (
+                  <button type="button" className="secondary-action danger-action" onClick={endVoiceCall}>
+                    ■ إنهاء الاتصال
+                  </button>
+                )}
+                <button type="button" className="secondary-action" onClick={() => void sendSms()}>
+                  💬 إرسال SMS
+                </button>
+                <button type="button" className="secondary-action" onClick={() => void requestLocation()} disabled={locationBusy}>
+                  {locationBusy ? "جاري الإرسال…" : "📍 طلب مشاركة الموقع"}
+                </button>
+              </div>
+              {locationStatus && (
+                <div className="location-request-status">
+                  <strong>
+                    {locationStatus.status === "located" ? "✓ تم استلام موقع حقيقي" :
+                     locationStatus.status === "expired" ? "انتهت صلاحية طلب الموقع" :
+                     "⏳ بانتظار موافقة صاحب الجهاز"}
+                  </strong>
+                  {locationStatus.status === "located" && (
+                    <div className="grid">
+                      <Field label="خط العرض" value={locationStatus.latitude} ltr />
+                      <Field label="خط الطول" value={locationStatus.longitude} ltr />
+                      <Field label="الدقة" value={locationStatus.accuracy_m ? locationStatus.accuracy_m + " m" : null} ltr />
+                      <Field label="وقت المشاركة" value={locationStatus.located_at} ltr />
+                    </div>
+                  )}
+                  {locationStatus.status === "pending" && <span>سيظهر الموقع هنا فقط بعد موافقة المستخدم على مشاركة موقع جهازه.</span>}
+                </div>
+              )}
             </div>
 
             <div id="identity" className="section-title">👤 هوية صاحب الرقم</div>
