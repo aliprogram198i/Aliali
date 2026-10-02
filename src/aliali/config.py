@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     twilio_api_key_sid: str | None = None
     twilio_api_key_secret: str | None = None
     twilio_voice_app_sid: str | None = None
-    twilio_voice_from_number: str | None = None
+    twilio_voice_from_number: str | None = None\n    twilio_sms_from_number: str | None = None
     public_base_url: str | None = None
     location_db_path: str = "data/aliali_location.db"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
