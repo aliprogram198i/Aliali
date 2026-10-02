@@ -193,7 +193,7 @@ function App() {
     try {
       const response = await fetch(API_BASE + "/api/v1/ai-analysis", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData },
+        headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
         body: JSON.stringify({ init_data: webApp.initData, target: value }),
       });
       const payload = await response.json();
