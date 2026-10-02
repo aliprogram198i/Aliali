@@ -19,7 +19,7 @@ def test_social_summary_preserves_evidence_gate() -> None:
 
 
 def test_social_adapter_failure_is_isolated(monkeypatch) -> None:
-    import aliali.api.social as social
+    from aliali.api import social
 
     class BrokenProvider:
         id = "broken"
