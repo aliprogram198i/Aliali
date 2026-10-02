@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from ..ai import analyze_with_openai
 from ..config import Settings
 from ..core.errors import SecurityError
-from .auth import validate_telegram_init_data
+from .auth import create_session_token, validate_session_token, validate_telegram_init_data
 from .phone import lookup_phone
 
 
@@ -38,13 +38,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_origins=origins,
             allow_credentials=False,
             allow_methods=["POST", "GET"],
-            allow_headers=["Content-Type", "X-Telegram-Init-Data"],
+            allow_headers=["Content-Type", "X-Telegram-Init-Data", "X-Aliali-Session"],
         )
 
     # Process-local guardrail. It intentionally does not persist phone numbers or query targets.
     request_windows: dict[str, deque[float]] = defaultdict(deque)
     rate_limit = 20
     window_seconds = 60.0
+
+    def authenticate_request(init_data: str, session_token: str | None) -> dict[str, object]:
+        if session_token:
+            try:
+                session = validate_session_token(session_token, resolved_settings.bot_token)
+                return {"user": {"id": session["user_id"]}, "auth_date": None}
+            except SecurityError:
+                pass
+        return _authenticate(init_data, resolved_settings)
 
     def enforce_rate_limit(user_id: object) -> None:
         now = monotonic()
@@ -68,22 +77,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def create_session(
         request: SessionRequest,
         x_telegram_init_data: str | None = Header(default=None),
+        x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        identity = _authenticate(init_data, resolved_settings)
+        identity = authenticate_request(init_data, x_aliali_session)
         return {
             "authenticated": True,
             "user": identity["user"],
             "auth_date": identity["auth_date"],
+            "session_token": create_session_token(identity, resolved_settings.bot_token),
+            "session_ttl_seconds": 21600,
         }
 
     @app.post("/api/v1/ai-analysis")
     async def ai_analysis(
         request: LookupRequest,
         x_telegram_init_data: str | None = Header(default=None),
+        x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        identity = _authenticate(init_data, resolved_settings)
+        identity = authenticate_request(init_data, x_aliali_session)
         user = identity.get("user")
         user_id = user.get("id") if isinstance(user, dict) else None
         if user_id is None:

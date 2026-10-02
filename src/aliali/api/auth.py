@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac
 import json
@@ -54,3 +55,32 @@ def validate_telegram_init_data(
         user = parsed_user
 
     return {"auth_date": auth_date, "user": user}
+
+def create_session_token(identity: dict[str, object], bot_token: str, *, ttl_seconds: int = 21600) -> str:
+    user = identity.get("user")
+    user_id = user.get("id") if isinstance(user, dict) else None
+    if user_id is None:
+        raise SecurityError(ErrorCode.NOT_AUTHORIZED, "Telegram user identity is missing")
+    payload = {"user_id": user_id, "exp": int(time.time()) + ttl_seconds}
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    encoded = base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+    key = hmac.new(b"AlialiSession", bot_token.encode(), hashlib.sha256).digest()
+    signature = hmac.new(key, encoded.encode(), hashlib.sha256).hexdigest()
+    return f"{encoded}.{signature}"
+
+
+def validate_session_token(token: str, bot_token: str) -> dict[str, object]:
+    try:
+        encoded, received_signature = token.split(".", 1)
+        raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+        payload = json.loads(raw)
+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise SecurityError(ErrorCode.NOT_AUTHORIZED, "Aliali session is invalid") from exc
+    if not isinstance(payload, dict) or int(payload.get("exp", 0)) < int(time.time()):
+        raise SecurityError(ErrorCode.NOT_AUTHORIZED, "Aliali session has expired")
+    key = hmac.new(b"AlialiSession", bot_token.encode(), hashlib.sha256).digest()
+    expected = hmac.new(key, encoded.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, received_signature):
+        raise SecurityError(ErrorCode.NOT_AUTHORIZED, "Aliali session signature is invalid")
+    return {"user_id": payload.get("user_id"), "exp": payload["exp"]}
+

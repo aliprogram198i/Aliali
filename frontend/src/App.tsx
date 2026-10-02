@@ -122,6 +122,7 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
 
 function App() {
   const [ready, setReady] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [target, setTarget] = useState("");
   const [result, setResult] = useState<LookupResult | null>(null);
   const [error, setError] = useState("");
@@ -150,6 +151,9 @@ function App() {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.detail ?? "تعذر التحقق من جلسة Telegram.");
       }
+      const session = await response.json() as { session_token?: string };
+      if (!session.session_token) throw new Error("تعذر إنشاء جلسة Aliali.");
+      setSessionToken(session.session_token);
       setReady(true);
     }).catch((err) => {
       setError(err instanceof Error ? err.message : "تعذر التحقق من جلسة Telegram.");
@@ -168,7 +172,7 @@ function App() {
     try {
       const response = await fetch(API_BASE + "/api/v1/lookup", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData },
+        headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
         body: JSON.stringify({ init_data: webApp.initData, target: value }),
       });
       const payload = await response.json() as LookupResult & { detail?: string };
@@ -189,7 +193,7 @@ function App() {
     try {
       const response = await fetch(API_BASE + "/api/v1/ai-analysis", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData },
+        headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
         body: JSON.stringify({ init_data: webApp.initData, target: value }),
       });
       const payload = await response.json();
