@@ -5,7 +5,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ..ai import analyze_with_openai
+from ..ai import analyze_with_openai, create_evidence_snapshot
 from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import create_session_token, validate_session_token, validate_telegram_init_data
@@ -18,6 +18,10 @@ class SessionRequest(BaseModel):
 
 class LookupRequest(SessionRequest):
     target: str
+
+
+class AIAnalysisRequest(SessionRequest):
+    analysis_id: str
 
 
 def _authenticate(init_data: str, settings: Settings) -> dict[str, object]:
@@ -43,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Process-local guardrail. It intentionally does not persist phone numbers or query targets.
     request_windows: dict[str, deque[float]] = defaultdict(deque)
+    evidence_snapshots: dict[str, dict[str, object]] = {}
     rate_limit = 20
     window_seconds = 60.0
 
@@ -91,7 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/ai-analysis")
     async def ai_analysis(
-        request: LookupRequest,
+        request: AIAnalysisRequest,
         x_telegram_init_data: str | None = Header(default=None),
         x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
@@ -102,11 +107,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_rate_limit(user_id)
-        try:
-            result = await lookup_phone(request.target)
-            return await analyze_with_openai(result, resolved_settings)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        snapshot = evidence_snapshots.get(request.analysis_id)
+        if not snapshot:
+            raise HTTPException(status_code=404, detail="انتهت صلاحية لقطة الأدلة. أعد البحث ثم شغّل التحليل.")
+        return await analyze_with_openai({}, resolved_settings, snapshot=snapshot)
 
     @app.post("/api/v1/lookup")
     async def lookup(
@@ -122,7 +126,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_rate_limit(user_id)
         try:
-            return await lookup_phone(request.target)
+            result = await lookup_phone(request.target)
+            snapshot = create_evidence_snapshot(result)
+            evidence_snapshots[snapshot["analysis_id"]] = snapshot
+            result["analysis_id"] = snapshot["analysis_id"]
+            result["ai_analysis"] = {
+                "status": "ready",
+                "provider": None,
+                "model": resolved_settings.openai_model if resolved_settings.ai_enabled else None,
+                "message": "لقطة الأدلة جاهزة للتحليل دون إعادة تنفيذ البحث.",
+            }
+            if len(evidence_snapshots) > 500:
+                oldest = next(iter(evidence_snapshots))
+                evidence_snapshots.pop(oldest, None)
+            return result
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
