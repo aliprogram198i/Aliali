@@ -202,7 +202,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         enforce_rate_limit(user_id)
         purge_expired_snapshots()
         try:
-            result = await lookup_phone(request.target)
+            result = await lookup_phone(request.target, resolved_settings)
             enforce_snapshot_quota(user_id)
             snapshot = create_evidence_snapshot(result)
             snapshot["owner_id"] = user_id
