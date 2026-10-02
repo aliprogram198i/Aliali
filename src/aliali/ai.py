@@ -58,6 +58,16 @@ def _sanitize_evidence(result: dict[str, Any]) -> dict[str, Any]:
         "line_type": result.get("line_type"),
         "carrier": result.get("carrier"),
         "geographic_area": result.get("location"),
+        "location_profile": {
+            "status": (result.get("location_profile") or {}).get("status"),
+            "precision": (result.get("location_profile") or {}).get("precision"),
+            "country": (result.get("location_profile") or {}).get("country"),
+            "region_code": (result.get("location_profile") or {}).get("region_code"),
+            "geographic_area": (result.get("location_profile") or {}).get("geographic_area"),
+            "timezones": (result.get("location_profile") or {}).get("timezones") or [],
+            "source": (result.get("location_profile") or {}).get("source"),
+            "note": (result.get("location_profile") or {}).get("note"),
+        },
         "timezones": result.get("timezones") or [],
         "evidence_items": [
             {

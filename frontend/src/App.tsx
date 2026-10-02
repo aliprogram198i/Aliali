@@ -54,6 +54,19 @@ type SocialApp = {
   method?: string | null;
 };
 
+type LocationProfile = {
+  status?: "available" | "unknown" | null;
+  precision?: "PHONE_AREA" | "PHONE_REGION" | "UNKNOWN" | null;
+  country?: string | null;
+  region_code?: string | null;
+  geographic_area?: string | null;
+  timezones?: string[];
+  source?: string | null;
+  checked_at?: string | null;
+  note?: string | null;
+  coordinates?: null;
+};
+
 type CurrentLocation = {
   status?: "live" | "not_available" | null;
   latitude?: number | null;
@@ -98,6 +111,7 @@ type LookupResult = {
   analysis?: Analysis | null;
   identity?: Identity | null;
   current_location?: CurrentLocation | null;
+  location_profile?: LocationProfile | null;
   social_apps?: SocialApp[] | null;
   social_evidence_ledger?: SocialEvidenceLedgerEntry[] | null;
   message: string;
@@ -418,13 +432,29 @@ function App() {
             </div>
             <div className="identity-note"><span>🛡️</span><div><strong>حالة التحقق</strong><p>ظهور المنصة في القائمة لا يعني وجود حساب. لا تُعرض نتيجة ارتباط إلا بدليل من مزود مصرح أو ارتباط عام موثق، وتُفصل حالات عدم التحقق عن النفي.</p></div></div>
 
-            <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
-            <div className="grid">
-              <Field label="الدولة" value={result.country_name ?? result.region_code} />
-              <Field label="رمز الاتصال" value={result.country_code ? `+${result.country_code}` : null} ltr />
-              <Field label="المنطقة" value={result.region_code} ltr />
-              <Field label="منطقة مرتبطة بالرقم" value={result.location} />
-              <Field label="المناطق الزمنية المحتملة" value={result.timezones?.join(", ")} ltr />
+            <div className="section-title">🌍 الموقع الجغرافي المستنتج من بيانات الرقم</div>
+            <div className="location-evidence">
+              <div className="location-evidence-head">
+                <div>
+                  <strong>{result.location_profile?.geographic_area ?? result.location_profile?.country ?? "غير متوفر"}</strong>
+                  <span>
+                    {result.location_profile?.precision === "PHONE_AREA"
+                      ? "دقة: منطقة جغرافية مرتبطة بالرقم"
+                      : result.location_profile?.precision === "PHONE_REGION"
+                        ? "دقة: منطقة ترقيم"
+                        : "دقة: غير معروفة"}
+                  </span>
+                </div>
+                <span className="location-status">{result.location_profile?.precision ?? "UNKNOWN"}</span>
+              </div>
+              <div className="grid">
+                <Field label="الدولة" value={result.location_profile?.country ?? result.country_name ?? result.region_code} />
+                <Field label="رمز المنطقة" value={result.location_profile?.region_code ?? result.region_code} ltr />
+                <Field label="المنطقة المرتبطة بالرقم" value={result.location_profile?.geographic_area ?? result.location} />
+                <Field label="المناطق الزمنية" value={(result.location_profile?.timezones ?? result.timezones ?? []).join(", ")} ltr />
+              </div>
+              <div className="location-explanation">{result.location_profile?.note ?? "لا توجد إشارة جغرافية كافية."}</div>
+              <div className="location-source">المصدر: {result.location_profile?.source ?? result.source ?? "—"} · تحقق: {result.location_profile?.checked_at ? new Date(result.location_profile.checked_at).toLocaleString("ar") : "—"}</div>
             </div>
 
             <div id="facts" className="section-title">📱 خصائص الرقم</div>
