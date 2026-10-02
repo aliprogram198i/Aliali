@@ -70,7 +70,8 @@ def test_verifier_requires_supported_claims():
     }
     result = verify_analysis(analysis, payload)
     assert result["verified"] is False
-    assert "unsupported_sensitive_claim" in result["violations"]
+    assert "forbidden_sensitive_claim" in result["violations"]
+    assert result["risk"] == "high"
 
 
 def test_ai_disabled_returns_verified_deterministic_analysis():
@@ -91,3 +92,30 @@ def test_ai_provider_error_falls_back_to_deterministic(monkeypatch):
     result = asyncio.run(analyze_with_openai(_result(), settings))
     assert result["status"] == "provider_error"
     assert result["analysis"]["claims"]
+
+
+def test_verifier_rejects_claim_with_unknown_support_id():
+    payload = build_ai_payload(_result())
+    analysis = {
+        "claims": [
+            {"claim": "France", "support": ["E999"], "confidence": "high"},
+        ]
+    }
+    result = verify_analysis(analysis, payload)
+    assert result["verified"] is False
+    assert "claim_support_not_in_evidence" in result["violations"]
+
+
+def test_conflicts_force_verification_rejection():
+    payload = build_ai_payload(_result())
+    payload["evidence"]["evidence_items"].append(
+        {"id": "E3", "field": "country", "value": "Belgium", "confidence": "medium"}
+    )
+    analysis = {
+        "claims": [
+            {"claim": "country: France", "support": ["E2"], "confidence": "high"},
+        ]
+    }
+    result = verify_analysis(analysis, payload)
+    assert result["verified"] is False
+    assert "unresolved_evidence_conflict" in result["violations"]
