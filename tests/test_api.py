@@ -56,3 +56,19 @@ def test_lookup_returns_phone_metadata_for_authenticated_user() -> None:
     assert payload["valid"] is True
     assert payload["country_code"] == 33
     assert payload["e164"] == "+33142345678"
+    assert payload["evidence"]["scope"] == "public numbering-plan metadata"
+    assert payload["evidence"]["metadata_version"]
+
+
+def test_lookup_rate_limits_authenticated_user() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    init_data = _init_data({"id": 99, "first_name": "Rate"})
+    responses = [
+        client.post(
+            "/api/v1/lookup",
+            json={"init_data": init_data, "target": "+33142345678"},
+        )
+        for _ in range(21)
+    ]
+    assert responses[-1].status_code == 429
+    assert responses[-1].headers["retry-after"] == "60"
