@@ -1,3 +1,6 @@
+from collections import defaultdict, deque
+from time import monotonic
+
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -25,7 +28,7 @@ def _authenticate(init_data: str, settings: Settings) -> dict[str, object]:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or Settings()
-    app = FastAPI(title="Aliali Reverse Phone Lookup", version="2.0.0")
+    app = FastAPI(title="Aliali Reverse Phone Lookup", version="2.1.0")
 
     origins = [resolved_settings.mini_app_url] if resolved_settings.mini_app_url else []
     if origins:
@@ -36,6 +39,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_methods=["POST", "GET"],
             allow_headers=["Content-Type", "X-Telegram-Init-Data"],
         )
+
+    # Process-local guardrail. It intentionally does not persist phone numbers or query targets.
+    request_windows: dict[str, deque[float]] = defaultdict(deque)
+    rate_limit = 20
+    window_seconds = 60.0
+
+    def enforce_rate_limit(user_id: object) -> None:
+        now = monotonic()
+        key = str(user_id)
+        window = request_windows[key]
+        while window and now - window[0] >= window_seconds:
+            window.popleft()
+        if len(window) >= rate_limit:
+            raise HTTPException(
+                status_code=429,
+                detail="تم تجاوز حد البحث المؤقت. حاول مرة أخرى بعد قليل.",
+                headers={"Retry-After": str(int(window_seconds))},
+            )
+        window.append(now)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
@@ -60,7 +82,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         x_telegram_init_data: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        _authenticate(init_data, resolved_settings)
+        identity = _authenticate(init_data, resolved_settings)
+        user = identity.get("user")
+        user_id = user.get("id") if isinstance(user, dict) else None
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
+        enforce_rate_limit(user_id)
         try:
             return await lookup_phone(request.target)
         except ValueError as exc:
