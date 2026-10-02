@@ -41,6 +41,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
 
     possible = phonenumbers.is_possible_number(parsed)
     valid = phonenumbers.is_valid_number(parsed)
+    metadata_version = getattr(phonenumbers, "__version__", "unknown")
     base = {
         "ok": True,
         "type": "phone",
@@ -56,6 +57,16 @@ def _lookup_phone(value: str) -> dict[str, object]:
         "location": geocoder.description_for_number(parsed, "en") or None,
         "timezones": list(timezone.time_zones_for_number(parsed)),
         "source": "Google libphonenumber metadata",
+        "evidence": {
+            "source": "Google libphonenumber metadata",
+            "metadata_version": metadata_version,
+            "scope": "public numbering-plan metadata",
+            "limitations": [
+                "لا يثبت أن الرقم نشط حاليًا.",
+                "معلومات شركة الاتصالات قد تمثل تخصيص النطاق الأصلي، لا المشغل الحالي.",
+                "لا يتضمن اسم صاحب الرقم أو عنوانه أو حساباته الخاصة.",
+            ],
+        },
     }
     if not possible:
         raise ValueError("الرقم غير صالح من ناحية البنية.")
