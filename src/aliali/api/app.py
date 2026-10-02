@@ -112,9 +112,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lookup(
         request: LookupRequest,
         x_telegram_init_data: str | None = Header(default=None),
+        x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        identity = _authenticate(init_data, resolved_settings)
+        identity = authenticate_request(init_data, x_aliali_session)
         user = identity.get("user")
         user_id = user.get("id") if isinstance(user, dict) else None
         if user_id is None:

@@ -7,6 +7,7 @@ from phonenumbers import carrier, geocoder, number_type, timezone
 from phonenumbers.phonenumberutil import NumberParseException
 
 from .intelligence import build_intelligence
+from .social import check_social_presence
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 _PHONE_RE = re.compile(r"^[+0-9().\-\s]{6,32}$")
@@ -121,12 +122,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
 
     checked_at = datetime.now(UTC).isoformat()
     source_name = "Google libphonenumber metadata"
-    social_apps = [
-        {"id": "whatsapp", "name": "WhatsApp", "status": "number_contact_supported", "verification": "not_verified", "note": "يدعم التواصل بالرقم؛ وجود حساب نشط لا يُثبت من بيانات الترقيم وحدها."},
-        {"id": "telegram", "name": "Telegram", "status": "privacy_dependent", "verification": "not_verified", "note": "العثور عبر الرقم يعتمد على إعدادات الخصوصية في Telegram."},
-        {"id": "signal", "name": "Signal", "status": "privacy_dependent", "verification": "not_verified", "note": "إمكانية العثور عبر الرقم تعتمد على إعدادات الخصوصية في Signal."},
-        {"id": "other", "name": "تطبيقات أخرى", "status": "not_verifiable_from_number", "verification": "not_supported", "note": "لا يتم ادعاء وجود حسابات دون مصدر عام موثوق ومسموح به."},
-    ]
+    social_apps = check_social_presence()
 
     intelligence = build_intelligence(
         checked_at=checked_at,
@@ -178,6 +174,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
                 "معلومات شركة الاتصالات قد تمثل تخصيص النطاق الأصلي، لا المشغل الحالي.",
                 "الموقع والمنطقة الزمنية إشارات مرتبطة ببيانات الرقم وليست تحديدًا لموقع الجهاز.",
                 "لا يتضمن اسم صاحب الرقم أو عنوانه أو حساباته الخاصة أو موقع الجهاز الحالي.",
+                "نتائج التواصل لا تُعد إثباتًا للحساب ما لم يرد دليل من مزود مصرح أو ارتباط عام موثق.",
             ],
         },
     }
