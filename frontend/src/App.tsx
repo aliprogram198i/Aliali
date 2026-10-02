@@ -1,10 +1,26 @@
 import { useEffect, useState } from "react";
 
+type EvidenceItem = {
+  field: string;
+  value: unknown;
+  source: string;
+  confidence: "low" | "medium" | "high";
+  kind: string;
+  note?: string;
+};
+
 type Evidence = {
   source?: string | null;
   metadata_version?: string | null;
   scope?: string | null;
+  items?: EvidenceItem[];
   limitations?: string[];
+};
+
+type Analysis = {
+  status?: string | null;
+  overall_confidence?: "low" | "medium" | "high" | null;
+  evidence_count?: number | null;
 };
 
 type LookupResult = {
@@ -16,12 +32,15 @@ type LookupResult = {
   national?: string | null;
   country_code?: number | null;
   region_code?: string | null;
+  country_name?: string | null;
   valid?: boolean | null;
   possible?: boolean | null;
   line_type?: string | null;
   carrier?: string | null;
   location?: string | null;
   timezones?: string[] | null;
+  checked_at?: string | null;
+  analysis?: Analysis | null;
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
@@ -29,9 +48,24 @@ type LookupResult = {
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "");
 
-function Field({ label, value }: { label: string; value?: string | number | boolean | null }) {
+const confidenceLabel: Record<string, string> = {
+  high: "مرتفع",
+  medium: "متوسط",
+  low: "منخفض",
+};
+
+function Field({ label, value, ltr = false }: { label: string; value?: string | number | boolean | null; ltr?: boolean }) {
   if (value === undefined || value === null || value === "") return null;
-  return <div className="row"><span>{label}</span><strong>{String(value)}</strong></div>;
+  return (
+    <div className="row">
+      <span>{label}</span>
+      <strong className={ltr ? "ltr" : ""}>{String(value)}</strong>
+    </div>
+  );
+}
+
+function StatusPill({ ok, label }: { ok: boolean; label: string }) {
+  return <span className={ok ? "pill pill-ok" : "pill pill-muted"}>{ok ? "✓" : "—"} {label}</span>;
 }
 
 function App() {
@@ -55,8 +89,8 @@ function App() {
 
     fetch(API_BASE + "/api/v1/session", {
       method: "POST",
-      headers: {"Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData},
-      body: JSON.stringify({init_data: webApp.initData}),
+      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData },
+      body: JSON.stringify({ init_data: webApp.initData }),
     }).then(async (response) => {
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -79,10 +113,10 @@ function App() {
     try {
       const response = await fetch(API_BASE + "/api/v1/lookup", {
         method: "POST",
-        headers: {"Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData},
-        body: JSON.stringify({init_data: webApp.initData, target: value}),
+        headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData },
+        body: JSON.stringify({ init_data: webApp.initData, target: value }),
       });
-      const payload = await response.json() as LookupResult & {detail?: string};
+      const payload = await response.json() as LookupResult & { detail?: string };
       if (!response.ok) throw new Error(payload.detail ?? "تعذر تنفيذ البحث.");
       setResult(payload);
     } catch (err) {
@@ -95,22 +129,19 @@ function App() {
   async function copyResult() {
     if (!result) return;
     const lines = [
-      "ALIALI Reverse Lookup",
-      `Target: ${result.target}`,
-      `Type: PHONE`,
-      result.international && `International: ${result.international}`,
-      result.e164 && `E.164: ${result.e164}`,
-      result.national && `National: ${result.national}`,
-      result.country_code && `Country code: +${result.country_code}`,
-      result.region_code && `Region: ${result.region_code}`,
-      result.valid !== undefined && `Valid: ${result.valid ? "Yes" : "No"}`,
-      result.possible !== undefined && `Possible: ${result.possible ? "Yes" : "No"}`,
-      result.line_type && `Line type: ${result.line_type}`,
+      "ALIALI · REVERSE INTELLIGENCE",
+      `Number: ${result.international ?? result.target}`,
+      `E.164: ${result.e164 ?? "—"}`,
+      `Country: ${result.country_name ?? result.region_code ?? "—"} (+${result.country_code ?? "—"})`,
+      `Type: ${result.line_type ?? "—"}`,
+      `Valid: ${result.valid ? "Yes" : "No"}`,
       result.carrier && `Carrier: ${result.carrier}`,
-      result.location && `Location: ${result.location}`,
+      result.location && `Geographic area: ${result.location}`,
       result.timezones?.length && `Timezones: ${result.timezones.join(", ")}`,
-      result.source && `Source: ${result.source}`,
-      result.evidence?.metadata_version && `Metadata: ${result.evidence.metadata_version}`,
+      `Confidence: ${confidenceLabel[result.analysis?.overall_confidence ?? "low"] ?? "منخفض"}`,
+      `Source: ${result.evidence?.source ?? result.source ?? "—"}`,
+      `Metadata: ${result.evidence?.metadata_version ?? "—"}`,
+      `Checked: ${result.checked_at ?? "—"}`,
     ].filter(Boolean).join("\n");
 
     try {
@@ -125,92 +156,140 @@ function App() {
   return (
     <main className="app">
       <section className="panel">
-        <div className="brand">ALIALI · REVERSE INTELLIGENCE</div>
-        <h1>البحث العكسي</h1>
-        <p className="subtitle">
-          تحليل رقم الهاتف وفق بيانات الترقيم العامة، مع إظهار مصدر المعلومات وحدودها.
-        </p>
+        <header className="hero">
+          <div>
+            <div className="brand">ALIALI · REVERSE INTELLIGENCE</div>
+            <h1>تحليل رقم الهاتف</h1>
+            <p className="subtitle">
+              بحث عكسي قائم على بيانات الترقيم العامة، مع فصل واضح بين المعلومات المؤكدة
+              والإشارات والقيود.
+            </p>
+          </div>
+          <div className="secure-badge">🔐 Telegram session</div>
+        </header>
 
-        <label className="label" htmlFor="target">رقم الهاتف</label>
-        <input
-          id="target"
-          dir="ltr"
-          inputMode="tel"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="+33 1 42 34 56 78"
-          value={target}
-          onChange={(event) => { setTarget(event.target.value); setError(""); }}
-          onKeyDown={(event) => { if (event.key === "Enter") void search(); }}
-          disabled={!ready || busy}
-        />
-
-        <button type="button" onClick={() => void search()} disabled={!ready || !target.trim() || busy}>
-          {busy ? "جارٍ البحث والتحقق…" : "🔎 بحث"}
-        </button>
+        <div className="search-box">
+          <label className="label" htmlFor="target">رقم الهاتف</label>
+          <div className="input-wrap">
+            <input
+              id="target"
+              dir="ltr"
+              inputMode="tel"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="+33 1 42 34 56 78"
+              value={target}
+              onChange={(event) => { setTarget(event.target.value); setError(""); }}
+              onKeyDown={(event) => { if (event.key === "Enter") void search(); }}
+              disabled={!ready || busy}
+            />
+            <span className="input-hint">E.164</span>
+          </div>
+          <button type="button" onClick={() => void search()} disabled={!ready || !target.trim() || busy}>
+            {busy ? "جارٍ التحليل والتحقق…" : "🔎 تحليل الرقم"}
+          </button>
+          {!ready && !error && <div className="session-note">جاري التحقق من جلسة Telegram…</div>}
+        </div>
 
         {error && <div className="error">{error}</div>}
 
         {result && (
-          <section className="result">
+          <section className="result" aria-live="polite">
             <div className="result-head">
-              <span className="result-type">PHONE</span>
-              <span className="status">● بيانات ترقيم عامة</span>
+              <div>
+                <span className="result-type">PHONE INTELLIGENCE</span>
+                <span className="result-time">{result.checked_at ? new Date(result.checked_at).toLocaleString("ar") : ""}</span>
+              </div>
+              <div className="confidence">
+                <span>الثقة في بيانات الترقيم</span>
+                <strong className={`confidence-${result.analysis?.overall_confidence ?? "low"}`}>
+                  {confidenceLabel[result.analysis?.overall_confidence ?? "low"] ?? "منخفض"}
+                </strong>
+              </div>
             </div>
 
-            <h2>{result.international ?? result.target}</h2>
-            <p className="target">{result.target}</p>
+            <div className="number-card">
+              <div className="number-label">الرقم المحلل</div>
+              <h2 dir="ltr">{result.international ?? result.target}</h2>
+              <div className="number-meta" dir="ltr">{result.e164 ?? result.target}</div>
+              <div className="pills">
+                <StatusPill ok={Boolean(result.valid)} label={result.valid ? "رقم صالح وفق metadata" : "غير صالح وفق metadata"} />
+                <StatusPill ok={Boolean(result.possible)} label={result.possible ? "البنية ممكنة" : "البنية غير ممكنة"} />
+              </div>
+            </div>
 
-            <div className="section-title">التحقق</div>
+            <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
             <div className="grid">
-              <Field label="صالح" value={result.valid ? "نعم" : "لا"} />
-              <Field label="قابل للاستخدام" value={result.possible ? "نعم" : "لا"} />
+              <Field label="الدولة" value={result.country_name ?? result.region_code} />
+              <Field label="رمز الاتصال" value={result.country_code ? `+${result.country_code}` : null} ltr />
+              <Field label="المنطقة" value={result.region_code} ltr />
+              <Field label="منطقة مرتبطة بالرقم" value={result.location} />
+              <Field label="المناطق الزمنية المحتملة" value={result.timezones?.join(", ")} ltr />
+            </div>
+
+            <div className="section-title">📱 خصائص الرقم</div>
+            <div className="grid">
               <Field label="نوع الخط" value={result.line_type} />
-              <Field label="رمز الدولة" value={result.country_code ? `+${result.country_code}` : null} />
-              <Field label="المنطقة" value={result.region_code} />
-            </div>
-
-            <div className="section-title">تنسيق الرقم</div>
-            <div className="grid">
-              <Field label="الصيغة الدولية" value={result.international} />
-              <Field label="E.164" value={result.e164} />
-              <Field label="الصيغة المحلية" value={result.national} />
-            </div>
-
-            <div className="section-title">البيانات العامة</div>
-            <div className="grid">
+              <Field label="الصيغة الدولية" value={result.international} ltr />
+              <Field label="E.164" value={result.e164} ltr />
+              <Field label="الصيغة المحلية" value={result.national} ltr />
               <Field label="شركة الاتصالات" value={result.carrier} />
-              <Field label="الموقع التقريبي" value={result.location} />
-              <Field label="المناطق الزمنية" value={result.timezones?.join(", ")} />
             </div>
 
-            <div className="section-title">الدليل والمصدر</div>
-            <div className="evidence">
-              <Field label="المصدر" value={result.evidence?.source ?? result.source} />
-              <Field label="إصدار البيانات" value={result.evidence?.metadata_version} />
-              <Field label="النطاق" value={result.evidence?.scope} />
+            <div className="section-title">🔐 الأدلة التي بُنيت عليها النتيجة</div>
+            <div className="evidence-list">
+              {(result.evidence?.items ?? []).map((item) => (
+                <article className="evidence-item" key={item.field}>
+                  <div>
+                    <strong>{item.field}</strong>
+                    <span>{item.note ?? "بيانات ترقيم عامة"}</span>
+                  </div>
+                  <div className="evidence-value">
+                    <b>{Array.isArray(item.value) ? item.value.join(", ") : String(item.value)}</b>
+                    <em className={`confidence-${item.confidence}`}>{confidenceLabel[item.confidence]}</em>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="source-card">
+              <div className="source-row"><span>المصدر</span><strong>{result.evidence?.source ?? result.source}</strong></div>
+              <div className="source-row"><span>إصدار metadata</span><strong>{result.evidence?.metadata_version}</strong></div>
+              <div className="source-row"><span>نطاق البيانات</span><strong>{result.evidence?.scope}</strong></div>
+              <div className="source-row"><span>عدد الأدلة</span><strong>{result.analysis?.evidence_count ?? result.evidence?.items?.length ?? 0}</strong></div>
             </div>
 
             {result.evidence?.limitations?.length ? (
-              <ul className="limitations">
-                {result.evidence.limitations.map((item) => <li key={item}>{item}</li>)}
-              </ul>
+              <div className="limitations">
+                <div className="limitations-title">⚠️ حدود التحليل</div>
+                <ul>
+                  {result.evidence.limitations.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
             ) : null}
+
+            <div className="identity-note">
+              <span>👤</span>
+              <div>
+                <strong>الهوية الشخصية غير مثبتة</strong>
+                <p>هذه النتيجة لا تثبت اسم صاحب الرقم أو عنوانه أو حساباته أو نشاطه الحالي.</p>
+              </div>
+            </div>
 
             <p className="message">{result.message}</p>
 
             <div className="result-footer">
-              <span>لا يتم حفظ رقم البحث في الواجهة.</span>
+              <span>لا يتم تخزين رقم البحث في الواجهة.</span>
               <button className="copy" type="button" onClick={() => void copyResult()}>
-                {copied ? "✓ تم النسخ" : "نسخ النتيجة"}
+                {copied ? "✓ تم نسخ التقرير" : "نسخ تقرير التحليل"}
               </button>
             </div>
           </section>
         )}
 
-        <p className="hint">
-          هذه بيانات ترقيم عامة وليست إثباتًا لهوية صاحب الرقم أو نشاطه الحالي.
-        </p>
+        <footer className="hint">
+          Aliali يعرض ما يمكن إثباته من metadata العامة فقط؛ لا يتم تحويل الإشارات الجغرافية أو carrier إلى هوية شخصية.
+        </footer>
       </section>
     </main>
   );
