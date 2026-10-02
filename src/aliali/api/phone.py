@@ -122,7 +122,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
 
     checked_at = datetime.now(UTC).isoformat()
     source_name = "Google libphonenumber metadata"
-    social_apps = check_social_presence()
+    social_apps = check_social_presence(e164)
 
     intelligence = build_intelligence(
         checked_at=checked_at,
