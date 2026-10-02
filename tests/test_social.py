@@ -36,10 +36,10 @@ def test_social_adapter_failure_is_isolated(monkeypatch) -> None:
         def check(self, phone_e164: str) -> SocialResult:
             raise RuntimeError("simulated provider failure")
 
-    existing = social._REGISTRY.all()
+    existing = social.PROVIDER_REGISTRY.all()
     monkeypatch.setattr(
         social,
-        "_REGISTRY",
+        "PROVIDER_REGISTRY",
         SocialProviderRegistry(
             (
                 ProviderRegistration(BrokenProvider(), enabled=True),
