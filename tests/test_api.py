@@ -164,3 +164,28 @@ def test_ai_analysis_rejects_unknown_snapshot() -> None:
         json={"init_data": init_data, "analysis_id": "ali-missing"},
     )
     assert response.status_code == 404
+
+
+def test_lookup_identity_is_unknown_without_authorized_provider() -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN)))
+    init_data = _init_data({"id": 50, "first_name": "Identity"})
+    response = client.post(
+        "/api/v1/lookup",
+        json={"init_data": init_data, "target": "+33142345678"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["identity"]["status"] == "not_established"
+    assert payload["identity"]["name"] is None
+    assert payload["identity_provider_registry"][0]["enabled"] is False
+
+
+def test_identity_provider_registry_isolated_and_business_only() -> None:
+    from aliali.api.identity import TwilioCallerNameProvider, build_identity_registry
+
+    registry = build_identity_registry()
+    assert all(not item["enabled"] for item in registry.policy())
+
+    provider = TwilioCallerNameProvider("ACtest", "token")
+    provider_result = provider
+    assert provider_result.id == "twilio_cnam"
