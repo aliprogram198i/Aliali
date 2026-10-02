@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Self
+
 import json
 
 from aliali.api import identity
@@ -9,7 +11,7 @@ class FakeResponse:
     def __init__(self, payload: dict[str, object]) -> None:
         self.payload = payload
 
-    def __enter__(self) -> "FakeResponse":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: object) -> None:
