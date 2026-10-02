@@ -202,15 +202,17 @@ function App() {
   }
 
   async function runAiAnalysis() {
-    const value = target.trim();
-    if (!value || !API_BASE || !webApp?.initData) return;
+    if (!result?.analysis_id || !API_BASE || !webApp?.initData) {
+      setError("أجرِ البحث أولًا للحصول على لقطة الأدلة.");
+      return;
+    }
     setAiBusy(true);
     setError("");
     try {
       const response = await fetch(API_BASE + "/api/v1/ai-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
-        body: JSON.stringify({ init_data: webApp.initData, target: value }),
+        body: JSON.stringify({ init_data: webApp.initData, analysis_id: result.analysis_id }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail ?? "تعذر تنفيذ التحليل الذكي.");
