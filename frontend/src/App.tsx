@@ -29,6 +29,10 @@ type Identity = {
   source?: string | null;
   verified_at?: string | null;
   note?: string | null;
+  source?: string | null;
+  checked_at?: string | null;
+  evidence?: unknown;
+  method?: string | null;
 };
 
 type SocialApp = {
@@ -353,12 +357,14 @@ function App() {
               {(result.social_apps ?? []).map((app) => (
                 <article className="row" key={app.id}>
                   <strong>{app.name}</strong>
-                  <span>{app.status === "number_contact_supported" ? "يدعم التواصل بالرقم" : app.status === "privacy_dependent" ? "يعتمد على الخصوصية" : "غير قابل للتحقق من الرقم وحده"}</span>
+                  <span>{app.status === "verified_present" ? "ارتباط مؤكد" : app.status === "verified_absent" ? "ارتباط غير مثبت من المصدر" : app.status === "privacy_blocked" ? "الحماية بالخصوصية تمنع التحقق" : app.status === "provider_unavailable" ? "لا يوجد مزود تحقق مصرح متاح" : "لم يتم التحقق"}</span>
                   <small>{app.note}</small>
+                  {app.source && <small>المصدر: {app.source}</small>}
+                  {app.checked_at && <small>آخر تحقق: {new Date(app.checked_at).toLocaleString("ar")}</small>}
                 </article>
               ))}
             </div>
-            <div className="identity-note"><span>🛡️</span><div><strong>حالة التحقق</strong><p>ظهور التطبيق لا يعني إثبات وجود حساب مرتبط بالرقم؛ يتم احترام إعدادات الخصوصية ولا تُخمن الحسابات.</p></div></div>
+            <div className="identity-note"><span>🛡️</span><div><strong>حالة التحقق</strong><p>ظهور المنصة في القائمة لا يعني وجود حساب. لا تُعرض نتيجة ارتباط إلا بدليل من مزود مصرح أو ارتباط عام موثق، وتُفصل حالات عدم التحقق عن النفي.</p></div></div>
 
             <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
             <div className="grid">
