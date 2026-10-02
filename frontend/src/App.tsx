@@ -31,7 +31,7 @@ type Identity = {
   note?: string | null;
 };
 
-type CurrentLocation = {
+type SocialApp = {\n  id: string;\n  name: string;\n  status: string;\n  verification?: string | null;\n  note?: string | null;\n};\n\ntype CurrentLocation = {
   status?: "live" | "not_available" | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -60,7 +60,7 @@ type LookupResult = {
   checked_at?: string | null;
   analysis?: Analysis | null;
   identity?: Identity | null;
-  current_location?: CurrentLocation | null;
+  current_location?: CurrentLocation | null;\n  social_apps?: SocialApp[] | null;
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
@@ -276,6 +276,18 @@ function App() {
                 <div className="location-explanation">لإظهار موقع حقيقي، يجب أن يصل إلى Aliali موقع GPS من جهاز أو خدمة مصرح لها بمشاركة الموقع. بيانات الدولة أو المنطقة أو شركة الاتصالات لا تُعرض كموقع حالي.</div>
               )}
             </div>
+
+            <div className="section-title">📱 تطبيقات التواصل</div>
+            <div className="grid">
+              {(result.social_apps ?? []).map((app) => (
+                <article className="row" key={app.id}>
+                  <strong>{app.name}</strong>
+                  <span>{app.status === "number_contact_supported" ? "يدعم التواصل بالرقم" : app.status === "privacy_dependent" ? "يعتمد على الخصوصية" : "غير قابل للتحقق من الرقم وحده"}</span>
+                  <small>{app.note}</small>
+                </article>
+              ))}
+            </div>
+            <div className="identity-note"><span>🛡️</span><div><strong>حالة التحقق</strong><p>ظهور التطبيق لا يعني إثبات وجود حساب مرتبط بالرقم؛ يتم احترام إعدادات الخصوصية ولا تُخمن الحسابات.</p></div></div>
 
             <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
             <div className="grid">
