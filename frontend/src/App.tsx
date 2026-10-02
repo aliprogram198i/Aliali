@@ -54,7 +54,20 @@ type SocialApp = {
   method?: string | null;
 };
 
-type LocationProfile = {\n  status?: "available" | "unknown" | null;\n  precision?: "PHONE_AREA" | "PHONE_REGION" | "UNKNOWN" | null;\n  country?: string | null;\n  region_code?: string | null;\n  geographic_area?: string | null;\n  timezones?: string[];\n  source?: string | null;\n  checked_at?: string | null;\n  note?: string | null;\n  coordinates?: null;\n};\n\ntype CurrentLocation = {
+type LocationProfile = {
+  status?: "available" | "unknown" | null;
+  precision?: "PHONE_AREA" | "PHONE_REGION" | "UNKNOWN" | null;
+  country?: string | null;
+  region_code?: string | null;
+  geographic_area?: string | null;
+  timezones?: string[];
+  source?: string | null;
+  checked_at?: string | null;
+  note?: string | null;
+  coordinates?: null;
+};
+
+type CurrentLocation = {
   status?: "live" | "not_available" | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -97,7 +110,8 @@ type LookupResult = {
   checked_at?: string | null;
   analysis?: Analysis | null;
   identity?: Identity | null;
-  current_location?: CurrentLocation | null;\n  location_profile?: LocationProfile | null;
+  current_location?: CurrentLocation | null;
+  location_profile?: LocationProfile | null;
   social_apps?: SocialApp[] | null;
   social_evidence_ledger?: SocialEvidenceLedgerEntry[] | null;
   message: string;
@@ -264,7 +278,8 @@ function App() {
       `Source: ${result.evidence?.source ?? result.source ?? "—"}`,
       `Metadata: ${result.evidence?.metadata_version ?? "—"}`,
       `Checked: ${result.checked_at ?? "—"}`,
-    ].filter(Boolean).join("\n");
+    ].filter(Boolean).join("
+");
 
     try {
       await navigator.clipboard.writeText(lines);
