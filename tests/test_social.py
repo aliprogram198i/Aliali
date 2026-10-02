@@ -98,18 +98,26 @@ def test_provider_registry_rejects_duplicate_ids_and_invalid_policy() -> None:
             raise AssertionError("not called")
 
     registry = SocialProviderRegistry()
-    registry.register(ProviderRegistration(Provider()))
+    registration = ProviderRegistration(Provider())
+    registry.register(registration)
+
     try:
-        registry.register(ProviderRegistration(Provider()))
+        registry.register(registration)
     except ValueError as exc:
         assert "Duplicate provider id" in str(exc)
     else:
         raise AssertionError("duplicate provider id must fail")
 
     for timeout, rate in ((0, 30), (5, 0)):
+        invalid = ProviderRegistration(
+            Provider(),
+            timeout_seconds=timeout,
+            max_calls_per_minute=rate,
+        )
+        isolated = SocialProviderRegistry()
         try:
-            ProviderRegistration(Provider(), timeout_seconds=timeout, max_calls_per_minute=rate)
-            if timeout > 0:
-                raise AssertionError("invalid rate limit must fail at registration")
+            isolated.register(invalid)
         except ValueError:
             pass
+        else:
+            raise AssertionError("invalid provider policy must fail")
