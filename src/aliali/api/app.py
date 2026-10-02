@@ -1,8 +1,10 @@
 from collections import defaultdict, deque
 from datetime import UTC, datetime
-from time import monotonic\nimport urllib.parse
+from time import monotonic
+import urllib.parse
 
-from fastapi import FastAPI, Header, HTTPException, Request\nfrom fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -55,12 +57,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     request_windows: dict[str, deque[float]] = defaultdict(deque)
     ai_request_windows: dict[str, deque[float]] = defaultdict(deque)
     evidence_snapshots: dict[str, dict[str, object]] = {}
-    audit_ledger: dict[str, deque[dict[str, object]]] = defaultdict(lambda: deque(maxlen=100))\n    location_store = LocationStore(resolved_settings.location_db_path)\n    communication_windows: dict[str, deque[float]] = defaultdict(deque)
+    audit_ledger: dict[str, deque[dict[str, object]]] = defaultdict(lambda: deque(maxlen=100))
+    location_store = LocationStore(resolved_settings.location_db_path)
+    communication_windows: dict[str, deque[float]] = defaultdict(deque)
     rate_limit = 20
     ai_rate_limit = 6
     window_seconds = 60.0
     max_snapshots = 500
-    max_snapshots_per_user = 20\n    communication_rate_limit = 5
+    max_snapshots_per_user = 20
+    communication_rate_limit = 5
 
     def authenticate_request(init_data: str, session_token: str | None) -> dict[str, object]:
         if session_token:
