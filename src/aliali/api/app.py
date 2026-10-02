@@ -5,6 +5,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ..ai import analyze_with_openai
 from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import validate_telegram_init_data
@@ -75,6 +76,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "user": identity["user"],
             "auth_date": identity["auth_date"],
         }
+
+    @app.post("/api/v1/ai-analysis")
+    async def ai_analysis(
+        request: LookupRequest,
+        x_telegram_init_data: str | None = Header(default=None),
+    ) -> dict[str, object]:
+        init_data = x_telegram_init_data or request.init_data
+        identity = _authenticate(init_data, resolved_settings)
+        user = identity.get("user")
+        user_id = user.get("id") if isinstance(user, dict) else None
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
+        enforce_rate_limit(user_id)
+        try:
+            result = await lookup_phone(request.target)
+            return await analyze_with_openai(result, resolved_settings)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.post("/api/v1/lookup")
     async def lookup(

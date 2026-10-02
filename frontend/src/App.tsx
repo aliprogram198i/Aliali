@@ -127,6 +127,8 @@ function App() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiResult, setAiResult] = useState<{ status?: string; provider?: string | null; model?: string | null; message?: string; analysis?: { summary?: string; evidence_interpretation?: string; cautions?: string[]; next_steps?: string[] } } | null>(null);
   const webApp = window.Telegram?.WebApp;
 
   useEffect(() => {
@@ -161,6 +163,7 @@ function App() {
     setError("");
     setResult(null);
     setCopied(false);
+    setAiResult(null);
 
     try {
       const response = await fetch(API_BASE + "/api/v1/lookup", {
@@ -175,6 +178,27 @@ function App() {
       setError(err instanceof Error ? err.message : "تعذر تنفيذ البحث.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function runAiAnalysis() {
+    const value = target.trim();
+    if (!value || !API_BASE || !webApp?.initData) return;
+    setAiBusy(true);
+    setError("");
+    try {
+      const response = await fetch(API_BASE + "/api/v1/ai-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": webApp.initData },
+        body: JSON.stringify({ init_data: webApp.initData, target: value }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail ?? "تعذر تنفيذ التحليل الذكي.");
+      setAiResult(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر تنفيذ التحليل الذكي.");
+    } finally {
+      setAiBusy(false);
     }
   }
 
@@ -405,10 +429,22 @@ function App() {
             <div className="identity-note">
               <span>🧠</span>
               <div>
-                <strong>Evidence-first AI ready</strong>
-                <p>{result.ai_analysis?.message}</p>
+                <strong>تحليل AI اختياري قائم على الأدلة</strong>
+                <p>{aiResult?.message ?? result.ai_analysis?.message}</p>
+                <button className="copy" type="button" onClick={() => void runAiAnalysis()} disabled={aiBusy}>
+                  {aiBusy ? "جارٍ التحليل الذكي…" : "تشغيل التحليل الذكي"}
+                </button>
               </div>
             </div>
+            {aiResult?.analysis ? (
+              <div className="source-card">
+                <div className="source-row"><span>الملخص</span><strong>{aiResult.analysis.summary}</strong></div>
+                <div className="source-row"><span>قراءة الأدلة</span><strong>{aiResult.analysis.evidence_interpretation}</strong></div>
+                <div className="source-row"><span>التحذيرات</span><strong>{(aiResult.analysis.cautions ?? []).join(" · ")}</strong></div>
+                <div className="source-row"><span>الخطوات التالية</span><strong>{(aiResult.analysis.next_steps ?? []).join(" · ")}</strong></div>
+                <div className="source-row"><span>المزود / النموذج</span><strong>{aiResult.provider ?? "—"} / {aiResult.model ?? "—"}</strong></div>
+              </div>
+            ) : null}
 
             <div className="section-title">📌 ما نعرفه وما لا نعرفه</div>
             <div className="known-unknown">
