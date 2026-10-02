@@ -11,7 +11,7 @@ def test_phone_area_is_explicitly_non_live():
     )
     assert result.precision == "PHONE_AREA"
     assert result.status == "available"
-    assert "GPS" in result.note
+    assert "موقعًا حاليًا للجهاز" in result.note
     assert result.timezones == ("Europe/Paris",)
 
 
