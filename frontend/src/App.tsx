@@ -49,6 +49,19 @@ type CurrentLocation = {
   note?: string | null;
 };
 
+type Intelligence = {
+  executive_summary?: { headline?: string; validity?: string; identity?: string; live_location?: string; evidence_coverage?: number };
+  coverage?: { percent?: number; confirmed?: number; supported?: number; unknown?: number; method?: string };
+  confidence?: { overall?: "low" | "medium" | "high"; identity?: string; reason?: string };
+  source_registry?: Array<{ id?: string; name?: string; type?: string; status?: string; retrieved_at?: string | null; metadata_version?: string }>;
+  consistency_checks?: Array<{ id?: string; label?: string; status?: string; details?: string }>;
+  known?: string[];
+  unknown?: string[];
+  timeline?: Array<{ event?: string; label?: string; at?: string }>;
+  ai_analysis?: { status?: string; provider?: string | null; model?: string | null; message?: string };
+  generated_at?: string;
+};
+
 type LookupResult = {
   ok: boolean;
   type: "phone";
@@ -73,6 +86,16 @@ type LookupResult = {
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
+  executive_summary?: Intelligence["executive_summary"];
+  coverage?: Intelligence["coverage"];
+  confidence?: Intelligence["confidence"];
+  source_registry?: Intelligence["source_registry"];
+  consistency_checks?: Intelligence["consistency_checks"];
+  known?: string[];
+  unknown?: string[];
+  timeline?: Intelligence["timeline"];
+  ai_analysis?: Intelligence["ai_analysis"];
+  generated_at?: string | null;
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "");
@@ -239,6 +262,17 @@ function App() {
               </div>
             </div>
 
+            <div className="executive-card">
+              <div className="executive-title">🧠 الملخص التنفيذي</div>
+              <strong>{result.executive_summary?.headline ?? "تحليل قائم على الأدلة"}</strong>
+              <div className="executive-grid">
+                <span>صلاحية الرقم <b>{result.executive_summary?.validity === "confirmed" ? "مؤكدة" : "غير مؤكدة"}</b></span>
+                <span>الهوية <b>{result.executive_summary?.identity === "high" ? "مرتفعة" : result.executive_summary?.identity === "medium" ? "مدعومة" : "غير مثبتة"}</b></span>
+                <span>الموقع المباشر <b>{result.executive_summary?.live_location === "available" ? "متاح" : "غير متاح"}</b></span>
+                <span>تغطية الأدلة <b>{result.executive_summary?.evidence_coverage ?? 0}%</b></span>
+              </div>
+            </div>
+
             <div className="number-card">
               <div className="number-label">الرقم المحلل</div>
               <h2 dir="ltr">{result.international ?? result.target}</h2>
@@ -337,6 +371,59 @@ function App() {
               <div className="source-row"><span>إصدار metadata</span><strong>{result.evidence?.metadata_version}</strong></div>
               <div className="source-row"><span>نطاق البيانات</span><strong>{result.evidence?.scope}</strong></div>
               <div className="source-row"><span>عدد الأدلة</span><strong>{result.analysis?.evidence_count ?? result.evidence?.items?.length ?? 0}</strong></div>
+            </div>
+
+            <div className="section-title">🧩 مصفوفة الأدلة والتحقق</div>
+            <div className="source-card">
+              <div className="source-row"><span>الأدلة المؤكدة</span><strong>{result.coverage?.confirmed ?? 0}</strong></div>
+              <div className="source-row"><span>الأدلة المدعومة</span><strong>{result.coverage?.supported ?? 0}</strong></div>
+              <div className="source-row"><span>المعلومات غير المعروفة</span><strong>{result.coverage?.unknown ?? 0}</strong></div>
+              <div className="source-row"><span>طريقة التقييم</span><strong>{result.coverage?.method ?? "—"}</strong></div>
+            </div>
+
+            <div className="section-title">⚖️ فحص الاتساق والتعارضات</div>
+            <div className="evidence-list">
+              {(result.consistency_checks ?? []).map((check) => (
+                <article className="evidence-item" key={check.id}>
+                  <div><strong>{check.label}</strong><span>{check.details}</span></div>
+                  <div className="evidence-value"><b>{check.status}</b></div>
+                </article>
+              ))}
+            </div>
+
+            <div className="section-title">🗂️ سجل المصادر</div>
+            <div className="evidence-list">
+              {(result.source_registry ?? []).map((source) => (
+                <article className="evidence-item" key={source.id}>
+                  <div><strong>{source.name}</strong><span>{source.type} · {source.status}</span></div>
+                  <div className="evidence-value"><b>{source.retrieved_at ? new Date(source.retrieved_at).toLocaleString("ar") : "—"}</b></div>
+                </article>
+              ))}
+            </div>
+
+            <div className="section-title">🤖 طبقة التحليل الذكي</div>
+            <div className="identity-note">
+              <span>🧠</span>
+              <div>
+                <strong>Evidence-first AI ready</strong>
+                <p>{result.ai_analysis?.message}</p>
+              </div>
+            </div>
+
+            <div className="section-title">📌 ما نعرفه وما لا نعرفه</div>
+            <div className="known-unknown">
+              <div><strong>نعرف</strong><ul>{(result.known ?? []).map((item) => <li key={item}>{item}</li>)}</ul></div>
+              <div><strong>لا نعرف</strong><ul>{(result.unknown ?? []).map((item) => <li key={item}>{item}</li>)}</ul></div>
+            </div>
+
+            <div className="section-title">🕒 الخط الزمني</div>
+            <div className="timeline">
+              {(result.timeline ?? []).map((event) => (
+                <div className="timeline-item" key={event.event}>
+                  <span>{event.at ? new Date(event.at).toLocaleTimeString("ar") : "—"}</span>
+                  <strong>{event.label}</strong>
+                </div>
+              ))}
             </div>
 
             {result.evidence?.limitations?.length ? (
