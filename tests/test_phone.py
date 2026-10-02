@@ -30,3 +30,17 @@ def test_lookup_phone_accepts_arabic_digits_without_persisting_input():
     result = _lookup_phone("+٣٣١٤٢٣٤٥٦٧٨")
     assert result["e164"] == "+33142345678"
     assert result["target"] == "+33142345678"
+
+
+def test_lookup_phone_exposes_professional_intelligence_layers():
+    result = _lookup_phone("+33142345678")
+
+    assert result["executive_summary"]["validity"] == "confirmed"
+    assert 0 <= result["coverage"]["percent"] <= 100
+    assert result["confidence"]["overall"] == "high"
+    assert len(result["source_registry"]) >= 3
+    assert len(result["consistency_checks"]) == 3
+    assert result["ai_analysis"]["status"] == "evidence_first"
+    assert result["ai_analysis"]["provider"] is None
+    assert result["unknown"]
+    assert len(result["timeline"]) == 4
