@@ -50,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     request_windows: dict[str, deque[float]] = defaultdict(deque)
     ai_request_windows: dict[str, deque[float]] = defaultdict(deque)
     evidence_snapshots: dict[str, dict[str, object]] = {}
-    audit_ledger: deque[dict[str, object]] = deque(maxlen=1000)
+    audit_ledger: dict[str, deque[dict[str, object]]] = defaultdict(lambda: deque(maxlen=100))
     rate_limit = 20
     ai_rate_limit = 6
     window_seconds = 60.0
@@ -160,7 +160,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="لقطة الأدلة غير متاحة لهذه الجلسة.")
         started = monotonic()
         result = await analyze_with_openai({}, resolved_settings, snapshot=snapshot)
-        audit_ledger.append(
+        audit_ledger[str(user_id)].append(
             build_audit_record(
                 result,
                 duration_ms=int((monotonic() - started) * 1000),
@@ -168,18 +168,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return result
 
-    @app.get("/api/v1/ai-audit")
+    @app.post("/api/v1/ai-audit")
     async def ai_audit(
-        init_data: str = "",
+        request: SessionRequest,
         x_telegram_init_data: str | None = Header(default=None),
         x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
-        effective_init_data = x_telegram_init_data or init_data
+        effective_init_data = x_telegram_init_data or request.init_data
         identity = authenticate_request(effective_init_data, x_aliali_session)
         user = identity.get("user")
-        if not isinstance(user, dict) or user.get("id") is None:
+        user_id = user.get("id") if isinstance(user, dict) else None
+        if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
-        return {"items": list(audit_ledger)}
+        return {"items": list(audit_ledger.get(str(user_id), ()))}
 
     @app.post("/api/v1/lookup")
     async def lookup(
