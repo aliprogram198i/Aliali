@@ -4,6 +4,7 @@ import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
+from time import monotonic
 from typing import Any
 from urllib import error, request
 
@@ -12,6 +13,7 @@ from .config import Settings
 AI_POLICY_VERSION = "3.0"
 EVIDENCE_SCHEMA_VERSION = "2.0"
 ANALYSIS_VERSION = "2.0"
+SNAPSHOT_TTL_SECONDS = 900
 _OPENAI_URL = "https://api.openai.com/v1/responses"
 
 _SCHEMA = {
@@ -161,21 +163,80 @@ def _deterministic_analysis(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def verify_analysis(analysis: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Independently validate AI output against the supplied evidence contract."""
     conflicts = detect_conflicts(payload)
     violations: list[str] = []
-    forbidden_terms = ("owner", "address", "live location", "current location")
-    for claim in analysis.get("claims", []):
-        text = str(claim.get("claim", "")).lower()
-        if any(term in text for term in forbidden_terms) and not claim.get("support"):
-            violations.append("unsupported_sensitive_claim")
+    evidence_ids = {
+        str(item.get("id"))
+        for item in payload.get("evidence", {}).get("evidence_items", [])
+        if item.get("id")
+    }
+    forbidden_terms = (
+        "owner", "identity", "address", "live location", "current location",
+        "هوية", "صاحب الرقم", "عنوان", "موقع الجهاز الحالي", "الموقع الحالي",
+    )
+    allowed_confidence = {"high", "medium", "low", "unknown"}
+
+    claims = analysis.get("claims", [])
+    if not isinstance(claims, list):
+        violations.append("claims_not_array")
+        claims = []
+
+    for claim in claims:
+        if not isinstance(claim, dict):
+            violations.append("invalid_claim")
+            continue
+        claim_text = str(claim.get("claim", "")).lower()
+        support = claim.get("support")
+        confidence = claim.get("confidence")
+        if not isinstance(support, list):
+            violations.append("claim_support_not_array")
+            support = []
+        if any(str(item) not in evidence_ids for item in support):
+            violations.append("claim_support_not_in_evidence")
+        if confidence not in allowed_confidence:
+            violations.append("invalid_claim_confidence")
+        if any(term in claim_text for term in forbidden_terms):
+            violations.append("forbidden_sensitive_claim")
+
+    # A conflict is never converted into a resolved fact by the verifier.
+    if conflicts:
+        violations.append("unresolved_evidence_conflict")
+
     verified = not violations
+    unique_violations = list(dict.fromkeys(violations))
     return {
         "status": "passed" if verified else "rejected",
         "verified": verified,
-        "violations": violations,
+        "violations": unique_violations,
         "conflicts": conflicts,
-        "risk": "low" if verified and not conflicts else "medium",
-        "message": "تم اجتياز فحص الأدلة والسياسة." if verified else "تم رفض استنتاج غير مدعوم.",
+        "risk": "low" if verified else "high" if any(
+            item in unique_violations
+            for item in ("forbidden_sensitive_claim", "claim_support_not_in_evidence")
+        ) else "medium",
+        "message": "تم اجتياز فحص الأدلة والسياسة." if verified else "تم رفض مخرجات لا تطابق عقد الأدلة.",
+    }
+
+
+def build_audit_record(
+    analysis: dict[str, Any],
+    *,
+    duration_ms: int,
+    recorded_at: str | None = None,
+) -> dict[str, Any]:
+    """Return non-sensitive operational metadata for an AI audit ledger."""
+    verification = analysis.get("verification") or {}
+    return {
+        "analysis_id": analysis.get("analysis_id"),
+        "recorded_at": recorded_at or datetime.now(UTC).isoformat(),
+        "status": analysis.get("status"),
+        "provider": analysis.get("provider"),
+        "model": analysis.get("model"),
+        "policy_version": analysis.get("policy_version", AI_POLICY_VERSION),
+        "analysis_version": analysis.get("analysis_version", ANALYSIS_VERSION),
+        "verification_status": verification.get("status"),
+        "verification_risk": verification.get("risk"),
+        "duration_ms": max(0, int(duration_ms)),
     }
 
 
@@ -198,6 +259,7 @@ async def analyze_with_openai(
     *,
     snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    started = monotonic()
     evidence_snapshot = snapshot or create_evidence_snapshot(result)
     payload = evidence_snapshot["payload"]
     deterministic = _deterministic_analysis(payload)
@@ -220,6 +282,8 @@ async def analyze_with_openai(
             "provider": None,
             "model": settings.openai_model,
             "analysis_id": evidence_snapshot["analysis_id"],
+            "policy_version": AI_POLICY_VERSION,
+            "analysis_version": ANALYSIS_VERSION,
             "verification": verify_analysis(deterministic, payload),
             "analysis": deterministic,
             "message": "مزود AI غير مهيأ؛ تم الاحتفاظ بالتحليل الحتمي كمصدر الحقيقة.",
