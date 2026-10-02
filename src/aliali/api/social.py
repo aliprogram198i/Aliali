@@ -169,6 +169,7 @@ PROVIDER_REGISTRY = SocialProviderRegistry(
     )
 )
 
+
 def _serialize(result: SocialResult) -> dict[str, object]:
     return {
         "id": result.id,
