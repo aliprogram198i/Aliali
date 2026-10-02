@@ -9,6 +9,7 @@ from phonenumbers.phonenumberutil import NumberParseException
 from ..config import Settings
 from .identity import build_identity_registry, resolve_identity
 from .intelligence import build_intelligence
+from .location import as_dict, resolve_phone_location
 from .social import PROVIDER_REGISTRY, check_social_presence_with_ledger
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
@@ -111,7 +112,7 @@ def _lookup_phone(value: str, settings: Settings | None = None) -> dict[str, obj
         twilio_auth_token=resolved_settings.twilio_auth_token,
     )
     identity, identity_evidence_ledger = resolve_identity(e164, identity_registry)
-    current_location = {
+    location_evidence = resolve_phone_location(\n        country=country_name or region_code,\n        region_code=region_code,\n        geographic_area=location,\n        timezones=timezones,\n        source=source_name,\n    )\n    location_profile = as_dict(location_evidence)\n\n    current_location = {
         "status": "not_available",
         "latitude": None,
         "longitude": None,
@@ -130,7 +131,7 @@ def _lookup_phone(value: str, settings: Settings | None = None) -> dict[str, obj
         valid=valid,
         possible=possible,
         identity=identity,
-        current_location=current_location,
+        current_location=current_location,\n        location_profile=location_profile,
         social_apps=social_apps,
         evidence_items=evidence_items,
         source=source_name,
@@ -153,7 +154,7 @@ def _lookup_phone(value: str, settings: Settings | None = None) -> dict[str, obj
         "possible": possible,
         "line_type": line_type,
         "carrier": carrier_name,
-        "location": location,
+        "location": location,\n        "location_profile": location_profile,
         "timezones": timezones,
         "source": source_name,
         "checked_at": checked_at,
