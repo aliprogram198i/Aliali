@@ -1,10 +1,23 @@
 import { useEffect, useState } from "react";
 
 type LookupResult = {
-  ok: boolean; type: "ip" | "mac"; target: string; name: string;
+  ok: boolean;
+  type: "phone" | "ip" | "mac";
+  target: string;
+  name?: string;
+  international?: string | null;
+  e164?: string | null;
+  national?: string | null;
+  country_code?: number | null;
+  region_code?: string | null;
+  valid?: boolean | null;
+  possible?: boolean | null;
+  line_type?: string | null;
+  carrier?: string | null;
+  location?: string | null;
+  timezones?: string[] | null;
   organization?: string | null; isp?: string | null; asn?: number | string | null;
-  domain?: string | null; location?: string | null; country?: string | null;
-  country_code?: string | null; region?: string | null; city?: string | null;
+  domain?: string | null; country?: string | null; region?: string | null; city?: string | null;
   continent?: string | null; latitude?: number | null; longitude?: number | null;
   timezone?: string | null; is_eu?: boolean | null; ip_version?: string | null;
   scope?: string | null; oui?: string | null; assignment?: string | null;
@@ -65,87 +78,91 @@ function App() {
   async function copyResult() {
     if (!result) return;
     const lines = [
-      "ALIALI Network Lookup",
+      "ALIALI Reverse Lookup",
       `Target: ${result.target}`,
       `Type: ${result.type.toUpperCase()}`,
-      `Name: ${result.name}`,
+      result.international && `International: ${result.international}`,
+      result.e164 && `E.164: ${result.e164}`,
+      result.national && `National: ${result.national}`,
+      result.country_code && `Country code: +${result.country_code}`,
+      result.region_code && `Region: ${result.region_code}`,
+      result.valid !== undefined && `Valid: ${result.valid ? "Yes" : "No"}`,
+      result.possible !== undefined && `Possible: ${result.possible ? "Yes" : "No"}`,
+      result.line_type && `Line type: ${result.line_type}`,
+      result.carrier && `Carrier: ${result.carrier}`,
+      result.location && `Location: ${result.location}`,
+      result.timezones?.length && `Timezones: ${result.timezones.join(", ")}`,
       result.organization && `Organization: ${result.organization}`,
       result.isp && `ISP: ${result.isp}`,
       result.asn && `ASN: ${result.asn}`,
       result.domain && `Domain: ${result.domain}`,
-      result.location && `Location: ${result.location}`,
-      result.timezone && `Timezone: ${result.timezone}`,
-      result.latitude !== null && result.latitude !== undefined && result.longitude !== null && result.longitude !== undefined
-        ? `Coordinates: ${result.latitude}, ${result.longitude}` : "",
       result.oui && `OUI: ${result.oui}`,
       result.assignment && `Assignment: ${result.assignment}`,
       `Source: ${result.source ?? "N/A"}`,
     ].filter(Boolean).join("\n");
     try {
       await navigator.clipboard.writeText(lines);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setError("تعذر نسخ النتيجة.");
-    }
+      setCopied(true); window.setTimeout(() => setCopied(false), 1800);
+    } catch { setError("تعذر نسخ النتيجة."); }
   }
+
+  const isPhone = result?.type === "phone";
 
   return (
     <main className="app">
       <section className="panel">
-        <div className="brand">ALIALI · NETWORK INTELLIGENCE</div>
-        <h1>بحث الشبكة</h1>
-        <p className="subtitle">أدخل IP أو MAC للحصول على هوية الشبكة والمعلومات العامة المتاحة على الإنترنت.</p>
-        <label className="label" htmlFor="target">عنوان IP أو MAC</label>
-        <input id="target" dir="ltr" autoCapitalize="characters" autoComplete="off" spellCheck={false}
-          placeholder="8.8.8.8 أو AA:BB:CC:DD:EE:FF" value={target}
+        <div className="brand">ALIALI · REVERSE INTELLIGENCE</div>
+        <h1>البحث العكسي</h1>
+        <p className="subtitle">أدخل رقم الهاتف بالصيغة الدولية للحصول على معلومات الترقيم العامة المتاحة.</p>
+        <label className="label" htmlFor="target">رقم الهاتف</label>
+        <input id="target" dir="ltr" inputMode="tel" autoComplete="off" spellCheck={false}
+          placeholder="+33 1 42 34 56 78" value={target}
           onChange={(event) => { setTarget(event.target.value); setError(""); }}
           onKeyDown={(event) => { if (event.key === "Enter") void search(); }}
           disabled={!ready || busy} />
         <button type="button" onClick={() => void search()} disabled={!ready || !target.trim() || busy}>
-          {busy ? "جارٍ تحليل البيانات…" : "🔎 بحث"}
+          {busy ? "جارٍ البحث والتحقق…" : "🔎 بحث"}
         </button>
         {error && <div className="error">{error}</div>}
         {result && (
           <section className="result">
             <div className="result-head">
-              <span className="result-type">{result.type === "ip" ? "PUBLIC IP" : "MAC / OUI"}</span>
-              <span className="status">● بيانات متاحة</span>
+              <span className="result-type">{isPhone ? "PHONE" : result.type === "ip" ? "IP" : "MAC / OUI"}</span>
+              <span className="status">● نتيجة موثقة من بيانات عامة</span>
             </div>
-            <h2>{result.name}</h2>
+            <h2>{isPhone ? (result.international ?? result.target) : (result.name ?? "Network result")}</h2>
             <p className="target">{result.target}</p>
 
-            <div className="section-title">الهوية</div>
-            <div className="grid">
-              <Field label="النوع" value={result.type === "ip" ? result.ip_version : "MAC"} />
-              <Field label="النطاق" value={result.scope} />
-              <Field label="الجهة" value={result.organization} />
-              <Field label="مزود الشبكة" value={result.isp} />
-              <Field label="ASN" value={result.asn} />
-              <Field label="النطاق المرتبط" value={result.domain} />
-            </div>
-
-            {result.type === "ip" && (
+            {isPhone ? (
               <>
-                <div className="section-title">الموقع التقريبي</div>
+                <div className="section-title">الرقم</div>
                 <div className="grid">
-                  <Field label="الدولة" value={result.country} />
-                  <Field label="المنطقة" value={result.region} />
-                  <Field label="المدينة" value={result.city} />
-                  <Field label="القارة" value={result.continent} />
-                  <Field label="المنطقة الزمنية" value={result.timezone} />
-                  <Field label="الاتحاد الأوروبي" value={result.is_eu === null || result.is_eu === undefined ? null : result.is_eu ? "نعم" : "لا"} />
-                  <Field label="الإحداثيات" value={result.latitude !== null && result.latitude !== undefined && result.longitude !== null && result.longitude !== undefined ? `${result.latitude}, ${result.longitude}` : null} />
+                  <Field label="الصيغة الدولية" value={result.international} />
+                  <Field label="E.164" value={result.e164} />
+                  <Field label="الصيغة المحلية" value={result.national} />
+                  <Field label="رمز الدولة" value={result.country_code ? `+${result.country_code}` : null} />
+                  <Field label="المنطقة" value={result.region_code} />
+                  <Field label="صالح" value={result.valid ? "نعم" : "لا"} />
+                  <Field label="قابل للاستخدام" value={result.possible ? "نعم" : "لا"} />
+                  <Field label="نوع الخط" value={result.line_type} />
+                </div>
+                <div className="section-title">المعلومات العامة</div>
+                <div className="grid">
+                  <Field label="شركة الاتصالات" value={result.carrier} />
+                  <Field label="الموقع التقريبي" value={result.location} />
+                  <Field label="المناطق الزمنية" value={result.timezones?.join(", ")} />
                 </div>
               </>
-            )}
-
-            {result.type === "mac" && (
+            ) : (
               <>
-                <div className="section-title">هوية العنوان</div>
+                <div className="section-title">الهوية</div>
                 <div className="grid">
-                  <Field label="OUI" value={result.oui} />
-                  <Field label="نوع التخصيص" value={result.assignment} />
+                  <Field label="النوع" value={result.type === "ip" ? result.ip_version : "MAC"} />
+                  <Field label="النطاق" value={result.scope} />
+                  <Field label="الجهة" value={result.organization} />
+                  <Field label="مزود الشبكة" value={result.isp} />
+                  <Field label="ASN" value={result.asn} />
+                  <Field label="النطاق المرتبط" value={result.domain} />
                 </div>
               </>
             )}
@@ -157,7 +174,7 @@ function App() {
             </div>
           </section>
         )}
-        <p className="hint">بيانات تعريفية عامة فقط؛ لا يوجد فحص منافذ أو مسح للأجهزة أو كشف لمعلومات خاصة.</p>
+        <p className="hint">لا يتم حفظ الرقم. لا يمكن استخراج اسم صاحب الرقم أو عنوانه أو حساباته الخاصة من الرقم وحده.</p>
       </section>
     </main>
   );
