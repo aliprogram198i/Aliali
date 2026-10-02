@@ -259,7 +259,6 @@ async def analyze_with_openai(
     *,
     snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    started = monotonic()
     evidence_snapshot = snapshot or create_evidence_snapshot(result)
     payload = evidence_snapshot["payload"]
     deterministic = _deterministic_analysis(payload)
