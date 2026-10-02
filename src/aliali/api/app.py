@@ -6,7 +6,12 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ..ai import SNAPSHOT_TTL_SECONDS, analyze_with_openai, build_audit_record, create_evidence_snapshot
+from ..ai import (
+    SNAPSHOT_TTL_SECONDS,
+    analyze_with_openai,
+    build_audit_record,
+    create_evidence_snapshot,
+)
 from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import create_session_token, validate_session_token, validate_telegram_init_data
