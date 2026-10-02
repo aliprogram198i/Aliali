@@ -31,7 +31,15 @@ type Identity = {
   note?: string | null;
 };
 
-type SocialApp = {\n  id: string;\n  name: string;\n  status: string;\n  verification?: string | null;\n  note?: string | null;\n};\n\ntype CurrentLocation = {
+type SocialApp = {
+  id: string;
+  name: string;
+  status: string;
+  verification?: string | null;
+  note?: string | null;
+};
+
+type CurrentLocation = {
   status?: "live" | "not_available" | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -60,7 +68,8 @@ type LookupResult = {
   checked_at?: string | null;
   analysis?: Analysis | null;
   identity?: Identity | null;
-  current_location?: CurrentLocation | null;\n  social_apps?: SocialApp[] | null;
+  current_location?: CurrentLocation | null;
+  social_apps?: SocialApp[] | null;
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
@@ -164,7 +173,8 @@ function App() {
       `Source: ${result.evidence?.source ?? result.source ?? "—"}`,
       `Metadata: ${result.evidence?.metadata_version ?? "—"}`,
       `Checked: ${result.checked_at ?? "—"}`,
-    ].filter(Boolean).join("\n");
+    ].filter(Boolean).join("
+");
 
     try {
       await navigator.clipboard.writeText(lines);
