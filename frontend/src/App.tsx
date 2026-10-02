@@ -123,6 +123,27 @@ const confidenceLabel: Record<string, string> = {
   low: "منخفض",
 };
 
+const confidenceWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
+
+function evidencePriority(item: EvidenceItem) {
+  return confidenceWeight[item.confidence] ?? 0;
+}
+
+function socialPriority(app: SocialApp) {
+  const weights: Record<string, number> = {
+    verified_present: 4,
+    verified_absent: 3,
+    privacy_blocked: 2,
+    provider_unavailable: 1,
+    not_checked: 0,
+  };
+  return weights[app.status] ?? 0;
+}
+
+function checkPriority(status?: string) {
+  return status === "inconsistent" || status === "conflict" ? 3 : status === "insufficient" ? 2 : status === "consistent" ? 1 : 0;
+}
+
 function Field({ label, value, ltr = false }: { label: string; value?: string | number | boolean | null; ltr?: boolean }) {
   if (value === undefined || value === null || value === "") return null;
   return (
@@ -320,6 +341,22 @@ function App() {
               </div>
             </div>
 
+            <nav className="result-nav" aria-label="أقسام نتيجة التحليل">
+              <a href="#overview">الخلاصة</a>
+              <a href="#identity">الهوية والموقع</a>
+              <a href="#social">التواصل</a>
+              <a href="#facts">خصائص الرقم</a>
+              <a href="#evidence">الأدلة</a>
+              <a href="#analysis">التحليل</a>
+            </nav>
+
+            <div id="overview" className="quick-summary">
+              <div><span>الحالة</span><strong>{result.valid ? "صالحة" : "غير مؤكدة"}</strong></div>
+              <div><span>الدولة</span><strong>{result.country_name ?? result.region_code ?? "—"}</strong></div>
+              <div><span>النوع</span><strong>{result.line_type ?? "—"}</strong></div>
+              <div><span>الأدلة</span><strong>{result.evidence?.items?.length ?? 0}</strong></div>
+            </div>
+
             <div className="number-card">
               <div className="number-label">الرقم المحلل</div>
               <h2 dir="ltr">{result.international ?? result.target}</h2>
@@ -330,7 +367,7 @@ function App() {
               </div>
             </div>
 
-            <div className="section-title">👤 هوية صاحب الرقم</div>
+            <div id="identity" className="section-title">👤 هوية صاحب الرقم</div>
             <div className="identity-result">
               <div className="identity-main">
                 <span className="identity-icon">👤</span>
@@ -367,9 +404,9 @@ function App() {
               )}
             </div>
 
-            <div className="section-title">📱 تطبيقات التواصل</div>
+            <div id="social" className="section-title">📱 تطبيقات التواصل</div>
             <div className="grid">
-              {(result.social_apps ?? []).map((app) => (
+              {[...(result.social_apps ?? [])].sort((a, b) => socialPriority(b) - socialPriority(a)).map((app) => (
                 <article className="row" key={app.id}>
                   <strong>{app.name}</strong>
                   <span>{app.status === "verified_present" ? "ارتباط مؤكد" : app.status === "verified_absent" ? "ارتباط غير مثبت من المصدر" : app.status === "privacy_blocked" ? "الحماية بالخصوصية تمنع التحقق" : app.status === "provider_unavailable" ? "لا يوجد مزود تحقق مصرح متاح" : "لم يتم التحقق"}</span>
@@ -390,7 +427,7 @@ function App() {
               <Field label="المناطق الزمنية المحتملة" value={result.timezones?.join(", ")} ltr />
             </div>
 
-            <div className="section-title">📱 خصائص الرقم</div>
+            <div id="facts" className="section-title">📱 خصائص الرقم</div>
             <div className="grid">
               <Field label="نوع الخط" value={result.line_type} />
               <Field label="الصيغة الدولية" value={result.international} ltr />
@@ -399,9 +436,9 @@ function App() {
               <Field label="شركة الاتصالات" value={result.carrier} />
             </div>
 
-            <div className="section-title">🔐 الأدلة التي بُنيت عليها النتيجة</div>
+            <div id="evidence" className="section-title">🔐 الأدلة التي بُنيت عليها النتيجة</div>
             <div className="evidence-list">
-              {(result.evidence?.items ?? []).map((item) => (
+              {[...(result.evidence?.items ?? [])].sort((a, b) => evidencePriority(b) - evidencePriority(a) || a.field.localeCompare(b.field)).map((item) => (
                 <article className="evidence-item" key={item.field}>
                   <div>
                     <strong>{item.field}</strong>
@@ -448,7 +485,7 @@ function App() {
 
             <div className="section-title">⚖️ فحص الاتساق والتعارضات</div>
             <div className="evidence-list">
-              {(result.consistency_checks ?? []).map((check) => (
+              {[...(result.consistency_checks ?? [])].sort((a, b) => checkPriority(b.status) - checkPriority(a.status)).map((check) => (
                 <article className="evidence-item" key={check.id}>
                   <div><strong>{check.label}</strong><span>{check.details}</span></div>
                   <div className="evidence-value"><b>{check.status}</b></div>
@@ -458,7 +495,7 @@ function App() {
 
             <div className="section-title">🗂️ سجل المصادر</div>
             <div className="evidence-list">
-              {(result.source_registry ?? []).map((source) => (
+              {[...(result.source_registry ?? [])].sort((a, b) => (a.status === "available" ? 1 : 0) - (b.status === "available" ? 1 : 0)).reverse().map((source) => (
                 <article className="evidence-item" key={source.id}>
                   <div><strong>{source.name}</strong><span>{source.type} · {source.status}</span></div>
                   <div className="evidence-value"><b>{source.retrieved_at ? new Date(source.retrieved_at).toLocaleString("ar") : "—"}</b></div>
@@ -466,7 +503,7 @@ function App() {
               ))}
             </div>
 
-            <div className="section-title">🤖 طبقة التحليل الذكي</div>
+            <div id="analysis" className="section-title">🤖 طبقة التحليل الذكي</div>
             <div className="identity-note">
               <span>🧠</span>
               <div>
