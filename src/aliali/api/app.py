@@ -38,7 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_origins=origins,
             allow_credentials=False,
             allow_methods=["POST", "GET"],
-            allow_headers=["Content-Type", "X-Telegram-Init-Data"],
+            allow_headers=["Content-Type", "X-Telegram-Init-Data", "X-Aliali-Session"],
         )
 
     # Process-local guardrail. It intentionally does not persist phone numbers or query targets.
@@ -93,9 +93,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def ai_analysis(
         request: LookupRequest,
         x_telegram_init_data: str | None = Header(default=None),
+        x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
         init_data = x_telegram_init_data or request.init_data
-        identity = _authenticate(init_data, resolved_settings)
+        identity = authenticate_request(init_data, x_aliali_session)
         user = identity.get("user")
         user_id = user.get("id") if isinstance(user, dict) else None
         if user_id is None:
