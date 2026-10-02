@@ -31,7 +31,7 @@ type Identity = {
   note?: string | null;
 };
 
-type CurrentLocation = {
+type SocialApp = {\n  id: string;\n  name: string;\n  status: string;\n  verification?: string | null;\n  note?: string | null;\n};\n\ntype CurrentLocation = {
   status?: "live" | "not_available" | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -60,7 +60,7 @@ type LookupResult = {
   checked_at?: string | null;
   analysis?: Analysis | null;
   identity?: Identity | null;
-  current_location?: CurrentLocation | null;
+  current_location?: CurrentLocation | null;\n  social_apps?: SocialApp[] | null;
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
@@ -156,7 +156,7 @@ function App() {
       `Type: ${result.line_type ?? "—"}`,
       `Valid: ${result.valid ? "Yes" : "No"}`,
       `Owner identity: ${result.identity?.name ?? "Not established"}`,
-      `Current location: ${result.current_location?.status === "live" ? "Live" : "Not available"}`,
+      `Current location: ${result.current_location?.status === "live" ? "Live" : "Not available"}`,\n      `Social apps: ${(result.social_apps ?? []).map((app) => `${app.name} (${app.status})`).join(", ") || "—"}`,
       result.carrier && `Carrier: ${result.carrier}`,
       result.location && `Geographic area: ${result.location}`,
       result.timezones?.length && `Timezones: ${result.timezones.join(", ")}`,
@@ -276,6 +276,24 @@ function App() {
                 <div className="location-explanation">لإظهار موقع حقيقي، يجب أن يصل إلى Aliali موقع GPS من جهاز أو خدمة مصرح لها بمشاركة الموقع. بيانات الدولة أو المنطقة أو شركة الاتصالات لا تُعرض كموقع حالي.</div>
               )}
             </div>
+
+            <div className="section-title">📱 تطبيقات التواصل المرتبطة بطريقة البحث</div>
+            <div className="social-apps">
+              {(result.social_apps ?? []).map((app) => (
+                <article className="social-app" key={app.id}>
+                  <div className="social-app-head">
+                    <div className="social-app-icon">{app.id === "whatsapp" ? "WA" : app.id === "telegram" ? "TG" : "•••"}</div>
+                    <div>
+                      <strong>{app.name}</strong>
+                      <span>{app.status === "number_contact_supported" ? "يدعم التواصل بالرقم" : app.status === "privacy_dependent" ? "يعتمد على الخصوصية" : "غير قابل للتحقق من الرقم وحده"}</span>
+                    </div>
+                  </div>
+                  <div className="social-app-status">{app.verification === "not_verified" ? "غير متحقق" : "غير مدعوم"}</div>
+                  <p>{app.note}</p>
+                </article>
+              ))}
+            </div>
+            <div className="social-app-note">هذه الطبقة تعرض التطبيقات التي يمكن أن تتعامل مع الرقم، ولا تدّعي أن الرقم يملك حسابًا فيها. إثبات وجود الحساب يحتاج مصدرًا يسمح بذلك وبطريقة لا تتجاوز إعدادات الخصوصية.</div>
 
             <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
             <div className="grid">
