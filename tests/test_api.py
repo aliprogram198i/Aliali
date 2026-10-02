@@ -189,3 +189,26 @@ def test_identity_provider_registry_isolated_and_business_only() -> None:
     provider = TwilioCallerNameProvider("ACtest", "token")
     provider_result = provider
     assert provider_result.id == "twilio_cnam"
+
+
+def test_voice_token_requires_provider_configuration(tmp_path) -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN, location_db_path=str(tmp_path / "locations.db"))))
+    init_data = _init_data({"id": 70, "first_name": "Voice"})
+    response = client.post("/api/v1/voice/token", json={"init_data": init_data})
+    assert response.status_code == 503
+
+
+def test_location_store_is_one_time_and_expires(tmp_path) -> None:
+    from aliali.api.communications import LocationStore
+
+    store = LocationStore(str(tmp_path / "locations.db"))
+    request_id, token, _ = store.create(71, ttl_seconds=900)
+    assert store.get(request_id, 71)["status"] == "pending"
+    assert store.submit(token, 48.8566, 2.3522, 12.5) is True
+    assert store.submit(token, 48.8566, 2.3522, 12.5) is False
+    result = store.get(request_id, 71)
+    assert result["status"] == "located"
+    assert result["latitude"] == 48.8566
+    assert result["longitude"] == 2.3522
+    assert result["accuracy_m"] == 12.5
+    assert store.get(request_id, 72) is None
