@@ -161,11 +161,9 @@ def _twilio_request(
     values: dict[str, str],
 ) -> dict[str, object]:
     url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/{resource}.json"
-    body = urllib.parse.urlencode(values).encode("utf-8")
-    password = auth_token.encode("utf-8")
+    body = urllib.parse.urlencode(values).encode()
     request = urllib.request.Request(url, data=body, method="POST")
-    credentials = f"{account_sid}:{auth_token}".encode("utf-8")
-    import base64
+    credentials = f"{account_sid}:{auth_token}".encode()
 
     request.add_header(
         "Authorization",
@@ -239,8 +237,6 @@ def validate_twilio_signature(
         return False
     data = url + "".join(f"{key}{params[key]}" for key in sorted(params))
     expected = hmac.new(auth_token.encode(), data.encode(), hashlib.sha1).digest()
-    import base64
-
     return hmac.compare_digest(base64.b64encode(expected).decode("ascii"), signature)
 
 
