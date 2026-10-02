@@ -4,7 +4,6 @@ import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
-from time import monotonic
 from typing import Any
 from urllib import error, request
 
