@@ -131,7 +131,7 @@ def test_ai_audit_is_non_sensitive_and_authenticated() -> None:
     body = audit.json()
     encoded = json.dumps(body, ensure_ascii=False)
     assert "+33142345678" not in encoded
-    assert "46" not in encoded
+    assert all("user_id" not in item for item in body["items"])\n    assert all("target" not in item for item in body["items"])
 
 
 def test_ai_audit_isolated_between_users() -> None:
