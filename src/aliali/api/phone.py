@@ -112,7 +112,7 @@ def _lookup_phone(value: str, settings: Settings | None = None) -> dict[str, obj
         twilio_auth_token=resolved_settings.twilio_auth_token,
     )
     identity, identity_evidence_ledger = resolve_identity(e164, identity_registry)
-    location_evidence = resolve_phone_location(\n        country=country_name or region_code,\n        region_code=region_code,\n        geographic_area=location,\n        timezones=timezones,\n        source=source_name,\n    )\n    location_profile = as_dict(location_evidence)\n\n    current_location = {
+    source_name = "Google libphonenumber metadata"\n    location_evidence = resolve_phone_location(\n        country=country_name or region_code,\n        region_code=region_code,\n        geographic_area=location,\n        timezones=timezones,\n        source=source_name,\n    )\n    location_profile = as_dict(location_evidence)\n\n    current_location = {
         "status": "not_available",
         "latitude": None,
         "longitude": None,
