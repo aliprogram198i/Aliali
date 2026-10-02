@@ -81,7 +81,7 @@ def test_ai_disabled_returns_verified_deterministic_analysis():
 
 
 def test_ai_provider_error_falls_back_to_deterministic(monkeypatch):
-    import aliali.ai as ai
+    from aliali import ai
 
     def fail(*args, **kwargs):
         raise TimeoutError("timeout")
