@@ -23,6 +23,24 @@ type Analysis = {
   evidence_count?: number | null;
 };
 
+type Identity = {
+  status?: "verified" | "publicly_associated" | "not_established" | null;
+  name?: string | null;
+  source?: string | null;
+  verified_at?: string | null;
+  note?: string | null;
+};
+
+type CurrentLocation = {
+  status?: "live" | "not_available" | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy_m?: number | null;
+  updated_at?: string | null;
+  source?: string | null;
+  note?: string | null;
+};
+
 type LookupResult = {
   ok: boolean;
   type: "phone";
@@ -41,6 +59,8 @@ type LookupResult = {
   timezones?: string[] | null;
   checked_at?: string | null;
   analysis?: Analysis | null;
+  identity?: Identity | null;
+  current_location?: CurrentLocation | null;
   message: string;
   source?: string | null;
   evidence?: Evidence | null;
@@ -135,6 +155,8 @@ function App() {
       `Country: ${result.country_name ?? result.region_code ?? "—"} (+${result.country_code ?? "—"})`,
       `Type: ${result.line_type ?? "—"}`,
       `Valid: ${result.valid ? "Yes" : "No"}`,
+      `Owner identity: ${result.identity?.name ?? "Not established"}`,
+      `Current location: ${result.current_location?.status === "live" ? "Live" : "Not available"}`,
       result.carrier && `Carrier: ${result.carrier}`,
       result.location && `Geographic area: ${result.location}`,
       result.timezones?.length && `Timezones: ${result.timezones.join(", ")}`,
@@ -218,6 +240,43 @@ function App() {
               </div>
             </div>
 
+            <div className="section-title">👤 هوية صاحب الرقم</div>
+            <div className="identity-result">
+              <div className="identity-main">
+                <span className="identity-icon">👤</span>
+                <div>
+                  <strong>{result.identity?.name ?? "غير مثبتة"}</strong>
+                  <span>{result.identity?.status === "verified" ? "هوية موثقة" : "لا توجد هوية موثقة ضمن هذا البحث"}</span>
+                </div>
+              </div>
+              <div className="identity-meta">
+                <Field label="المصدر" value={result.identity?.source} />
+                <Field label="آخر تحقق" value={result.identity?.verified_at} ltr />
+              </div>
+              <p>{result.identity?.note ?? "لا توجد بيانات هوية موثوقة متاحة."}</p>
+            </div>
+
+            <div className="section-title">📍 الموقع الحالي للجهاز</div>
+            <div className="live-location">
+              <div className="live-location-head">
+                <div>
+                  <strong>{result.current_location?.status === "live" ? "موقع مباشر متاح" : "الموقع الحالي غير متاح"}</strong>
+                  <span>{result.current_location?.note ?? "لا يمكن تحديد موقع الجهاز الحالي من رقم الهاتف وحده."}</span>
+                </div>
+                <span className={result.current_location?.status === "live" ? "location-status location-live" : "location-status"}>{result.current_location?.status === "live" ? "LIVE" : "UNAVAILABLE"}</span>
+              </div>
+              {result.current_location?.status === "live" ? (
+                <div className="grid">
+                  <Field label="خط العرض" value={result.current_location.latitude} ltr />
+                  <Field label="خط الطول" value={result.current_location.longitude} ltr />
+                  <Field label="الدقة" value={result.current_location.accuracy_m ? result.current_location.accuracy_m + " m" : null} ltr />
+                  <Field label="آخر تحديث" value={result.current_location.updated_at} ltr />
+                </div>
+              ) : (
+                <div className="location-explanation">لإظهار موقع حقيقي، يجب أن يصل إلى Aliali موقع GPS من جهاز أو خدمة مصرح لها بمشاركة الموقع. بيانات الدولة أو المنطقة أو شركة الاتصالات لا تُعرض كموقع حالي.</div>
+              )}
+            </div>
+
             <div className="section-title">🌍 الهوية الجغرافية للرقم</div>
             <div className="grid">
               <Field label="الدولة" value={result.country_name ?? result.region_code} />
@@ -269,10 +328,10 @@ function App() {
             ) : null}
 
             <div className="identity-note">
-              <span>👤</span>
+              <span>🛡️</span>
               <div>
-                <strong>الهوية الشخصية غير مثبتة</strong>
-                <p>هذه النتيجة لا تثبت اسم صاحب الرقم أو عنوانه أو حساباته أو نشاطه الحالي.</p>
+                <strong>فصل الهوية والموقع عن بيانات الرقم</strong>
+                <p>اسم الشخص وموقع الجهاز الحالي لا يُملآن إلا من مصدر موثوق ومصرح به؛ لا يتم تخمينهما من metadata.</p>
               </div>
             </div>
 

@@ -100,6 +100,23 @@ def _lookup_phone(value: str) -> dict[str, object]:
             )
         )
 
+    identity = {
+        "status": "not_established",
+        "name": None,
+        "source": None,
+        "verified_at": None,
+        "note": "لا توجد هوية شخصية موثقة في مصدر عام أو مصرح به ضمن هذا البحث.",
+    }
+    current_location = {
+        "status": "not_available",
+        "latitude": None,
+        "longitude": None,
+        "accuracy_m": None,
+        "updated_at": None,
+        "source": None,
+        "note": "الموقع الحالي للجهاز لا يمكن استخراجه من رقم الهاتف وحده.",
+    }
+
     base: dict[str, object] = {
         "ok": True,
         "type": "phone",
@@ -118,6 +135,8 @@ def _lookup_phone(value: str) -> dict[str, object]:
         "timezones": timezones,
         "source": "Google libphonenumber metadata",
         "checked_at": datetime.now(UTC).isoformat(),
+        "identity": identity,
+        "current_location": current_location,
         "analysis": {
             "status": "verified_public_metadata" if valid else "partial_public_metadata",
             "overall_confidence": "high" if valid else "medium",
@@ -132,7 +151,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
                 "لا يثبت أن الرقم نشط حاليًا.",
                 "معلومات شركة الاتصالات قد تمثل تخصيص النطاق الأصلي، لا المشغل الحالي.",
                 "الموقع والمنطقة الزمنية إشارات مرتبطة ببيانات الرقم وليست تحديدًا لموقع الجهاز.",
-                "لا يتضمن اسم صاحب الرقم أو عنوانه أو حساباته الخاصة.",
+                "لا يتضمن اسم صاحب الرقم أو عنوانه أو حساباته الخاصة أو موقع الجهاز الحالي.",
             ],
         },
     }
@@ -150,7 +169,7 @@ def _lookup_phone(value: str) -> dict[str, object]:
         **base,
         "message": (
             "النتيجة مبنية على بيانات الترقيم العامة. لا يمكن استنتاج هوية صاحب الرقم "
-            "أو نشاطه الحالي من الرقم وحده."
+            "أو موقع الجهاز الحالي أو نشاطه من الرقم وحده."
         ),
     }
 
