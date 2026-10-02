@@ -1,6 +1,6 @@
+import urllib.parse
 from collections import defaultdict, deque
 from datetime import UTC, datetime
-import urllib.parse
 from time import monotonic
 
 from fastapi import FastAPI, Header, HTTPException, Request
