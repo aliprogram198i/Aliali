@@ -14,6 +14,8 @@ def build_intelligence(
     evidence_items: list[dict[str, object]],
     source: str,
     metadata_version: str,
+    identity_evidence_ledger: list[dict[str, object]] | None = None,
+    identity_provider_registry: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """Build deterministic, evidence-first intelligence without inventing identity facts."""
     confirmed = [item for item in evidence_items if item.get("confidence") == "high"]
@@ -33,7 +35,7 @@ def build_intelligence(
             "id": "identity",
             "name": identity.get("source") or "لا يوجد مصدر هوية",
             "type": "identity",
-            "status": "verified" if identity.get("status") in {"verified", "publicly_associated"} else "not_available",
+            "status": "verified" if identity.get("status") in {"verified_business", "verified_user_consent", "publicly_associated"} else "not_available",
             "retrieved_at": identity.get("verified_at"),
         },
         {
@@ -79,7 +81,7 @@ def build_intelligence(
 
     coverage_total = max(len(evidence_items) + 3, 1)
     coverage_percent = round((len(confirmed) + 0.5 * len(supported)) / coverage_total * 100)
-    identity_confidence = "high" if identity.get("status") == "verified" else (
+    identity_confidence = "high" if identity.get("status") in {"verified_business", "verified_user_consent"} else (
         "medium" if identity.get("status") == "publicly_associated" else "unknown"
     )
 
@@ -113,6 +115,8 @@ def build_intelligence(
             {"event": "identity_checked", "label": "فحص حالة الهوية", "at": checked_at},
             {"event": "location_checked", "label": "فحص مصدر الموقع المباشر", "at": checked_at},
         ],
+        "identity_evidence_ledger": identity_evidence_ledger or [],
+        "identity_provider_registry": identity_provider_registry or [],
         "social_summary": [
             {"id": app.get("id"), "name": app.get("name"), "verification": app.get("verification"), "status": app.get("status"), "source": app.get("source"), "checked_at": app.get("checked_at"), "evidence": app.get("evidence"), "method": app.get("method"), "note": app.get("note")}
             for app in social_apps

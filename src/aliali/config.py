@@ -8,4 +8,6 @@ class Settings(BaseSettings):
     ai_enabled: bool = False
     openai_api_key: str | None = None
     openai_model: str = "gpt-5.6-luna"
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
