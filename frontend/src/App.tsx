@@ -483,7 +483,9 @@ function App() {
                 <div className="source-row"><span>قراءة الأدلة</span><strong>{aiResult.analysis.evidence_interpretation}</strong></div>
                 <div className="source-row"><span>التحذيرات</span><strong>{(aiResult.analysis.cautions ?? []).join(" · ")}</strong></div>
                 <div className="source-row"><span>الخطوات التالية</span><strong>{(aiResult.analysis.next_steps ?? []).join(" · ")}</strong></div>
-                <div className="source-row"><span>المزود / النموذج</span><strong>{aiResult.provider ?? "—"} / {aiResult.model ?? "—"}</strong></div>
+                <div className="source-row"><span>التحقق</span><strong>{aiResult.verification?.verified ? "✓ اجتاز التحقق" : "—"}</strong></div>
+                <div className="source-row"><span>مخاطر التحليل</span><strong>{aiResult.verification?.risk ?? "—"}</strong></div>
+                <div className="source-row"><span>المزود / النموذج</span><strong>{aiResult.provider ?? "محرك حتمي"} / {aiResult.model ?? "—"}</strong></div>
               </div>
             ) : null}
 
