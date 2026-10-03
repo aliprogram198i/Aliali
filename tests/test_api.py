@@ -195,7 +195,9 @@ def test_identity_provider_registry_isolated_and_business_only() -> None:
 def test_voice_token_requires_provider_configuration(tmp_path) -> None:
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN, location_db_path=str(tmp_path / "locations.db"))))
     init_data = _init_data({"id": 70, "first_name": "Voice"})
-    response = client.post("/api/v1/voice/token", json={"init_data": init_data})
+    lookup = client.post("/api/v1/lookup", json={"init_data": init_data, "target": "+33142345678"})
+    assert lookup.status_code == 200
+    response = client.post("/api/v1/voice/token", json={"init_data": init_data, "analysis_id": lookup.json()["analysis_id"]})
     assert response.status_code == 503
 
 
@@ -213,3 +215,26 @@ def test_location_store_is_one_time_and_expires(tmp_path) -> None:
     assert result["longitude"] == 2.3522
     assert result["accuracy_m"] == 12.5
     assert store.get(request_id, 72) is None
+
+
+def test_communications_require_owner_bound_analysis_snapshot(tmp_path) -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN, location_db_path=str(tmp_path / "locations.db"))))
+    first = _init_data({"id": 80, "first_name": "First"})
+    second = _init_data({"id": 81, "first_name": "Second"})
+    lookup = client.post("/api/v1/lookup", json={"init_data": first, "target": "+33142345678"})
+    assert lookup.status_code == 200
+    analysis_id = lookup.json()["analysis_id"]
+    forbidden_sms = client.post("/api/v1/contact/sms", json={"init_data": second, "analysis_id": analysis_id})
+    assert forbidden_sms.status_code == 404
+    forbidden_location = client.post("/api/v1/location/request", json={"init_data": second, "analysis_id": analysis_id})
+    assert forbidden_location.status_code == 404
+
+
+def test_voice_token_requires_owner_bound_analysis(tmp_path) -> None:
+    client = TestClient(create_app(Settings(bot_token=BOT_TOKEN, location_db_path=str(tmp_path / "locations.db"))))
+    first = _init_data({"id": 82, "first_name": "VoiceFirst"})
+    second = _init_data({"id": 83, "first_name": "VoiceSecond"})
+    lookup = client.post("/api/v1/lookup", json={"init_data": first, "target": "+33142345678"})
+    analysis_id = lookup.json()["analysis_id"]
+    response = client.post("/api/v1/voice/token", json={"init_data": second, "analysis_id": analysis_id})
+    assert response.status_code == 404
