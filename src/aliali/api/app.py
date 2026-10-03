@@ -18,6 +18,7 @@ from ..config import Settings
 from ..core.errors import SecurityError
 from .auth import create_session_token, validate_session_token, validate_telegram_init_data
 from .communications import (
+    CommunicationAuthorizationStore,
     CommunicationError,
     LocationStore,
     build_location_page,
@@ -43,11 +44,11 @@ class AIAnalysisRequest(SessionRequest):
 
 
 class CommunicationRequest(SessionRequest):
-    target: str
+    analysis_id: str
 
 
 class LocationRequest(SessionRequest):
-    target: str
+    analysis_id: str
 
 
 class LocationPayload(BaseModel):
@@ -83,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     evidence_snapshots: dict[str, dict[str, object]] = {}
     audit_ledger: dict[str, deque[dict[str, object]]] = defaultdict(lambda: deque(maxlen=100))
     location_store = LocationStore(resolved_settings.location_db_path)
+    communication_auth_store = CommunicationAuthorizationStore(resolved_settings.location_db_path)
     communication_windows: dict[str, deque[float]] = defaultdict(deque)
     rate_limit = 20
     ai_rate_limit = 6
@@ -243,6 +245,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_communication_rate_limit(user_id)
+        snapshot = evidence_snapshots.get(request.analysis_id)
+        if not snapshot or snapshot.get("owner_id") != user_id or not snapshot.get("target_e164"):
+            raise HTTPException(status_code=404, detail="نتيجة البحث غير متاحة لهذه الجلسة.")
+        target_e164 = str(snapshot["target_e164"])
+        authorization = communication_auth_store.create(user_id, target_e164, ttl_seconds=300)
         try:
             token = create_voice_token(
                 account_sid=resolved_settings.twilio_account_sid,
@@ -253,7 +260,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         except CommunicationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-        return {"token": token, "ttl_seconds": 900}
+        return {"token": token, "authorization": authorization, "ttl_seconds": 900}
 
     @app.post("/api/v1/voice/twiml")
     async def voice_twiml(request: Request) -> Response:
@@ -271,6 +278,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             to_number = normalize_e164(params.get("To", ""))
         except CommunicationError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        authorization = params.get("AlialiAuthorization", "")
+        if not communication_auth_store.consume(authorization, to_number):
+            raise HTTPException(status_code=403, detail="تفويض الاتصال غير صالح أو منتهي أو مستخدم.")
         caller_id = resolved_settings.twilio_voice_from_number
         if not caller_id:
             raise HTTPException(status_code=503, detail="رقم الاتصال غير مهيأ في الخادم.")
@@ -295,8 +305,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_communication_rate_limit(user_id)
+        snapshot = evidence_snapshots.get(request.analysis_id)
+        if not snapshot or snapshot.get("owner_id") != user_id or not snapshot.get("target_e164"):
+            raise HTTPException(status_code=404, detail="نتيجة البحث غير متاحة لهذه الجلسة.")
+        number = str(snapshot["target_e164"])
         try:
-            number = normalize_e164(request.target)
             import asyncio
             sid = await asyncio.to_thread(
                 send_sms,
@@ -323,8 +336,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if user_id is None:
             raise HTTPException(status_code=401, detail="تعذر تحديد هوية مستخدم Telegram.")
         enforce_communication_rate_limit(user_id)
+        snapshot = evidence_snapshots.get(request.analysis_id)
+        if not snapshot or snapshot.get("owner_id") != user_id or not snapshot.get("target_e164"):
+            raise HTTPException(status_code=404, detail="نتيجة البحث غير متاحة لهذه الجلسة.")
+        number = str(snapshot["target_e164"])
         try:
-            number = normalize_e164(request.target)
             request_id, token, expires_at = location_store.create(user_id)
             base = (resolved_settings.public_base_url or "").rstrip("/")
             if not base:
@@ -403,6 +419,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "model": resolved_settings.openai_model if resolved_settings.ai_enabled else None,
                 "message": "لقطة الأدلة جاهزة للتحليل دون إعادة تنفيذ البحث.",
             }
+            snapshot["target_e164"] = result.get("e164")
             while len(evidence_snapshots) > max_snapshots:
                 oldest = next(iter(evidence_snapshots))
                 evidence_snapshots.pop(oldest, None)
