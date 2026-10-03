@@ -264,10 +264,10 @@ function App() {
       const response = await fetch(API_BASE + "/api/v1/voice/token", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
-        body: JSON.stringify({ init_data: webApp.initData }),
+        body: JSON.stringify({ init_data: webApp.initData, analysis_id: result.analysis_id }),
       });
-      const payload = await response.json() as { token?: string; detail?: string };
-      if (!response.ok || !payload.token) throw new Error(payload.detail ?? "تعذر تهيئة الاتصال.");
+      const payload = await response.json() as { token?: string; authorization?: string; detail?: string };
+      if (!response.ok || !payload.token || !payload.authorization) throw new Error(payload.detail ?? "تعذر تهيئة الاتصال.");
       const device = new Device(payload.token);
       voiceDeviceRef.current = device;
       device.on("error", (err) => {
@@ -275,7 +275,7 @@ function App() {
         setVoiceStatus("تعذر الاتصال");
         setError(err.message || "حدث خطأ في الاتصال.");
       });
-      const call = await device.connect({ params: { To: result.e164 } });
+      const call = await device.connect({ params: { To: result.e164, AlialiAuthorization: payload.authorization } });
       voiceCallRef.current = call;
       setVoiceStatus("جاري الاتصال…");
       call.on("ringing", () => setVoiceStatus("يرن الرقم المستهدف…"));
@@ -315,7 +315,7 @@ function App() {
       const response = await fetch(API_BASE + "/api/v1/contact/sms", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
-        body: JSON.stringify({ init_data: webApp.initData, target: result.e164 }),
+        body: JSON.stringify({ init_data: webApp.initData, analysis_id: result.analysis_id }),
       });
       const payload = await response.json() as { detail?: string };
       if (!response.ok) throw new Error(payload.detail ?? "تعذر إرسال الرسالة.");
@@ -333,7 +333,7 @@ function App() {
       const response = await fetch(API_BASE + "/api/v1/location/request", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Aliali-Session": sessionToken ?? "", "X-Telegram-Init-Data": webApp.initData },
-        body: JSON.stringify({ init_data: webApp.initData, target: result.e164 }),
+        body: JSON.stringify({ init_data: webApp.initData, analysis_id: result.analysis_id }),
       });
       const payload = await response.json() as { request_id?: string; detail?: string };
       if (!response.ok || !payload.request_id) throw new Error(payload.detail ?? "تعذر إنشاء طلب الموقع.");
