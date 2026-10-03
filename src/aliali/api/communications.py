@@ -13,9 +13,8 @@ from datetime import UTC, datetime, timedelta
 from html import escape
 from pathlib import Path
 
-from fastapi import HTTPException
-
 import phonenumbers
+from fastapi import HTTPException
 from phonenumbers.phonenumberutil import NumberParseException
 
 try:
