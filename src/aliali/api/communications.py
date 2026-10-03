@@ -39,6 +39,67 @@ def normalize_e164(value: str) -> str:
 class CommunicationError(RuntimeError):
     pass
 
+class CommunicationAuthorizationStore:
+    """Short-lived, single-use authorization for a specific outbound target."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
+        with self._connect() as db:
+            db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS communication_authorizations (
+                    token_hash TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    target_e164 TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    consumed_at TEXT
+                )
+                """
+            )
+            db.execute("CREATE INDEX IF NOT EXISTS idx_comm_auth_expiry ON communication_authorizations(expires_at)")
+
+    def _connect(self) -> sqlite3.Connection:
+        db = sqlite3.connect(self.path, timeout=10)
+        db.row_factory = sqlite3.Row
+        return db
+
+    @staticmethod
+    def _hash(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def create(self, owner_id: object, target_e164: str, ttl_seconds: int = 300) -> str:
+        token = secrets.token_urlsafe(32)
+        now = datetime.now(UTC)
+        expires = now + timedelta(seconds=ttl_seconds)
+        with self._lock, self._connect() as db:
+            db.execute("DELETE FROM communication_authorizations WHERE expires_at <= ?", (now.isoformat(),))
+            db.execute(
+                "INSERT INTO communication_authorizations (token_hash, owner_id, target_e164, created_at, expires_at) VALUES (?, ?, ?, ?, ?)",
+                (self._hash(token), str(owner_id), target_e164, now.isoformat(), expires.isoformat()),
+            )
+        return token
+
+    def consume(self, token: str, target_e164: str) -> bool:
+        now = datetime.now(UTC)
+        token_hash = self._hash(token)
+        with self._lock, self._connect() as db:
+            row = db.execute(
+                "SELECT target_e164, expires_at, consumed_at FROM communication_authorizations WHERE token_hash = ?",
+                (token_hash,),
+            ).fetchone()
+            if not row or row["consumed_at"] or row["target_e164"] != target_e164:
+                return False
+            if datetime.fromisoformat(row["expires_at"]) <= now:
+                return False
+            updated = db.execute(
+                "UPDATE communication_authorizations SET consumed_at = ? WHERE token_hash = ? AND consumed_at IS NULL",
+                (now.isoformat(), token_hash),
+            )
+            return updated.rowcount == 1
+
 
 class LocationStore:
     def __init__(self, path: str) -> None:
