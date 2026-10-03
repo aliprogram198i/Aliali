@@ -234,7 +234,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/voice/token")
     async def voice_token(
-        request: SessionRequest,
+        request: CommunicationRequest,
         x_telegram_init_data: str | None = Header(default=None),
         x_aliali_session: str | None = Header(default=None),
     ) -> dict[str, object]:
