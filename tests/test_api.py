@@ -195,7 +195,9 @@ def test_identity_provider_registry_isolated_and_business_only() -> None:
 def test_voice_token_requires_provider_configuration(tmp_path) -> None:
     client = TestClient(create_app(Settings(bot_token=BOT_TOKEN, location_db_path=str(tmp_path / "locations.db"))))
     init_data = _init_data({"id": 70, "first_name": "Voice"})
-    response = client.post("/api/v1/voice/token", json={"init_data": init_data})
+    lookup = client.post("/api/v1/lookup", json={"init_data": init_data, "target": "+33142345678"})
+    assert lookup.status_code == 200
+    response = client.post("/api/v1/voice/token", json={"init_data": init_data, "analysis_id": lookup.json()["analysis_id"]})
     assert response.status_code == 503
 
 
